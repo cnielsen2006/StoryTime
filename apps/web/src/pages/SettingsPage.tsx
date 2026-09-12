@@ -1,13 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { useModels, useProviders, useSaveSettings, useSettings, useTestProvider } from '../api/hooks.js';
+import {
+  useClaudeAuth,
+  useClaudeLogin,
+  useClaudeLogout,
+  useModels,
+  useProviders,
+  useSaveSettings,
+  useSettings,
+  useTestProvider,
+} from '../api/hooks.js';
 import { ErrorNote, Select, Spinner, TextInput } from '../components/ui.js';
+
+/** What the server found when it looked for a Claude credential. */
+const CREDENTIAL_LABELS: Record<string, string> = {
+  'api-key': 'Using an API key from your .env file',
+  'auth-token': 'Using ANTHROPIC_AUTH_TOKEN from your environment',
+  membership: 'Signed in with a Claude membership',
+  none: 'Not signed in',
+};
 
 export function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
   const { data: providers } = useProviders();
   const save = useSaveSettings();
   const test = useTestProvider();
+  const { data: claudeAuth } = useClaudeAuth();
+  const claudeLogin = useClaudeLogin();
+  const claudeLogout = useClaudeLogout();
+  const [authMessage, setAuthMessage] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [provider, setProvider] = useState('');
   const [model, setModel] = useState('');
@@ -115,6 +136,63 @@ export function SettingsPage() {
 
         {testResult ? (
           <p className={`text-sm ${testResult.ok ? 'text-emerald-700' : 'text-red-600'}`}>{testResult.message}</p>
+        ) : null}
+      </section>
+
+      <section className="mt-10 space-y-3 border-t border-ink-200 pt-8">
+        <h2 className="text-base font-semibold text-ink-900">Claude sign-in</h2>
+        <p className="text-sm text-ink-500">
+          {claudeAuth?.signedIn
+            ? 'Claude is ready to use. No API key needed while you stay signed in.'
+            : 'Sign in with a Claude membership to use Claude without pasting an API key.'}
+        </p>
+
+        {claudeAuth ? (
+          <div className="card space-y-3 p-4">
+            <div className="flex items-center gap-3">
+              <span
+                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                  claudeAuth.signedIn ? 'bg-emerald-500' : 'bg-ink-300'
+                }`}
+              />
+              <div className="text-sm font-medium text-ink-800">{CREDENTIAL_LABELS[claudeAuth.credential]}</div>
+            </div>
+
+            {claudeAuth.antInstalled ? (
+              <div className="flex items-center gap-2">
+                {claudeAuth.credential === 'membership' ? (
+                  <button
+                    className="btn-secondary"
+                    disabled={claudeLogout.isPending}
+                    onClick={async () => setAuthMessage(await claudeLogout.mutateAsync())}
+                  >
+                    {claudeLogout.isPending ? 'Signing out…' : 'Sign out'}
+                  </button>
+                ) : (
+                  <button
+                    className="btn-secondary"
+                    disabled={claudeLogin.isPending}
+                    onClick={async () => setAuthMessage(await claudeLogin.mutateAsync())}
+                  >
+                    {claudeLogin.isPending ? 'Waiting for your browser…' : 'Sign in with Claude'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-ink-500">
+                Browser sign-in needs the ant command line tool, which is not installed. Install it, or set
+                ANTHROPIC_API_KEY in your .env file instead.
+              </p>
+            )}
+
+            {claudeLogin.isPending ? (
+              <p className="text-xs text-ink-500">A browser window has opened. Finish signing in there.</p>
+            ) : null}
+
+            {authMessage ? (
+              <p className={`text-sm ${authMessage.ok ? 'text-emerald-700' : 'text-red-600'}`}>{authMessage.message}</p>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

@@ -3,6 +3,8 @@ import type {
   AppSettings,
   Chapter,
   CharacterDetail,
+  ClaudeAuthResult,
+  ClaudeAuthStatus,
   CharacterExperienceInput,
   GeneratedVersion,
   GenerationRun,
@@ -477,5 +479,36 @@ export function useIdeateProject() {
 export function useTestProvider() {
   return useMutation({
     mutationFn: (provider: string) => post<{ ok: boolean; message: string }>(`/providers/${provider}/test`),
+  });
+}
+
+export const useClaudeAuth = () =>
+  useQuery({ queryKey: ['claude-auth'], queryFn: () => get<ClaudeAuthStatus>('/providers/anthropic/auth') });
+
+/**
+ * Sign-in opens a browser and blocks until the user finishes there, so this
+ * mutation can stay pending for minutes.
+ */
+export function useClaudeLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<ClaudeAuthResult>('/providers/anthropic/login'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['claude-auth'] });
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+    },
+  });
+}
+
+export function useClaudeLogout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<ClaudeAuthResult>('/providers/anthropic/logout'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['claude-auth'] });
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+    },
   });
 }

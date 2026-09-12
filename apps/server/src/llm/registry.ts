@@ -4,6 +4,7 @@ import { DEFAULT_MODELS, config } from '../config.js';
 import type { Db } from '../db/client.js';
 import { appSettings, projects } from '../db/schema.js';
 import { AnthropicProvider } from './providers/anthropic.js';
+import { detectCredential, isConfigured } from './providers/anthropic-auth.js';
 import { MockProvider } from './providers/mock.js';
 import { OllamaProvider } from './providers/ollama.js';
 import { OpenAIProvider } from './providers/openai.js';
@@ -101,12 +102,15 @@ export function clearProviderCache() {
 
 export function providerStatuses(db: Db): ProviderStatus[] {
   const settings = readSettings(db);
+  const anthropic = detectCredential();
   return [
     {
+      // A blank API key is not "unconfigured": an auth token or a Claude
+      // membership sign-in authenticates just as well.
       id: 'anthropic',
       label: 'Claude (Anthropic)',
-      configured: Boolean(config.ANTHROPIC_API_KEY),
-      detail: config.ANTHROPIC_API_KEY ? 'API key found in environment.' : 'Set ANTHROPIC_API_KEY in your .env file.',
+      configured: isConfigured(anthropic),
+      detail: anthropic.detail,
     },
     {
       id: 'openai',

@@ -17,6 +17,8 @@ const EnvSchema = z.object({
   DEFAULT_MODEL: z.string().default(''),
   DEFAULT_EFFORT: Effort.default('high'),
   ANTHROPIC_API_KEY: z.string().default(''),
+  /** Only honoured when it looks like a real Anthropic host; see resolveBaseUrl. */
+  ANTHROPIC_BASE_URL: z.string().default(''),
   ANTHROPIC_FALLBACKS: z.enum(['default', 'off']).default('default'),
   OPENAI_API_KEY: z.string().default(''),
   OPENAI_BASE_URL: z.string().default(''),

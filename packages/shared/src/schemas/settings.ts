@@ -27,3 +27,28 @@ export const ModelInfo = z.object({
   maxOutput: z.number().int().nullable(),
 });
 export type ModelInfo = z.infer<typeof ModelInfo>;
+
+/** Which credential the Anthropic provider is actually authenticating with. */
+export const ANTHROPIC_CREDENTIAL_KINDS = ['api-key', 'auth-token', 'membership', 'none'] as const;
+export const AnthropicCredentialKind = z.enum(ANTHROPIC_CREDENTIAL_KINDS);
+export type AnthropicCredentialKind = z.infer<typeof AnthropicCredentialKind>;
+
+/**
+ * State of the Claude membership sign-in. `antInstalled` is false when the ant
+ * CLI is missing, in which case the UI must offer pasting a key instead of a
+ * sign-in button that cannot work.
+ */
+export const ClaudeAuthStatus = z.object({
+  signedIn: z.boolean(),
+  antInstalled: z.boolean(),
+  credential: AnthropicCredentialKind,
+  detail: z.string(),
+});
+export type ClaudeAuthStatus = z.infer<typeof ClaudeAuthStatus>;
+
+export const ClaudeAuthResult = z.object({
+  ok: z.boolean(),
+  signedIn: z.boolean(),
+  message: z.string(),
+});
+export type ClaudeAuthResult = z.infer<typeof ClaudeAuthResult>;
