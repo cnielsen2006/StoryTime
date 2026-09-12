@@ -72,14 +72,38 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `start-production.bat` | Builds first, then serves everything from http://localhost:3001. No dev tooling running. |
 | `create-shortcuts.ps1` | Puts "StoryTime" and "StoryTime (LAN)" on your desktop. Add `-Remove` to take them off again. |
 
-In VS Code, press F5 and pick a configuration:
+### In VS Code
 
-- **Start StoryTime (server + web)** for normal work, or the **Start and open
-  browser** compound to launch Chrome with it.
-- **Debug API server** to set breakpoints in the API. It runs the server
-  directly under the debugger rather than through npm.
-- **Start StoryTime (LAN)**, **Web only (Vite)**, **Serve production build**,
-  **Run tests**, and **Debug current test file** cover the rest.
+Press F5, or pick from the Run and Debug dropdown. Entries are grouped: the
+**Run** ones start things normally with no debugger attached, the **Debug** ones
+stop at breakpoints.
+
+Run, no debugger:
+
+| Entry | What starts |
+|---|---|
+| Run StoryTime (server + web) | Both, the usual choice |
+| Run API server only | Just the API on port 3001 |
+| Run web only (Vite) | Just the front end on port 5173 |
+| Run StoryTime (LAN) | Both, reachable from other devices |
+| Run production build | Builds first, then serves from port 3001 |
+| Run tests | The end-to-end suite |
+
+Debug, breakpoints active:
+
+| Entry | What it attaches to |
+|---|---|
+| Debug StoryTime (server + web) | Both through npm |
+| Debug API server | The API directly under the debugger, best for server breakpoints |
+| Debug web (Chrome) | Front-end code in Chrome |
+| Debug tests / Debug current test file | Vitest, all tests or just the open file |
+
+Compounds start more than one at once: **Run StoryTime and open browser**,
+**Run server + web separately** (two terminals, so you can restart one without
+the other), and **Debug StoryTime (server + browser)**.
+
+Browser entries wait for Vite to answer before opening, so they do not land on a
+connection error.
 
 Ctrl+Shift+B runs the build. There is also a **Set up StoryTime** task that does
 install, migrate, and seed in one go.

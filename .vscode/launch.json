@@ -2,28 +2,118 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Start StoryTime (server + web)",
+      "name": "Run StoryTime (server + web)",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "noDebug": true,
       "env": {
         "BROWSER": "none"
+      },
+      "presentation": {
+        "group": "1-run",
+        "order": 1
       }
     },
     {
-      "name": "Start StoryTime (LAN)",
+      "name": "Run API server only",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:lan"],
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "noDebug": true,
+      "presentation": {
+        "group": "1-run",
+        "order": 2
+      }
+    },
+    {
+      "name": "Run web only (Vite)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:web"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "noDebug": true,
+      "presentation": {
+        "group": "1-run",
+        "order": 3
+      }
+    },
+    {
+      "name": "Run StoryTime (LAN)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:lan"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "noDebug": true,
       "env": {
         "BROWSER": "none",
         "HOST": "0.0.0.0"
+      },
+      "presentation": {
+        "group": "1-run",
+        "order": 4
+      }
+    },
+    {
+      "name": "Run production build",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "start"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "noDebug": true,
+      "preLaunchTask": "npm: build",
+      "presentation": {
+        "group": "1-run",
+        "order": 5
+      }
+    },
+    {
+      "name": "Debug StoryTime (server + web)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "env": {
+        "BROWSER": "none"
+      },
+      "presentation": {
+        "group": "2-debug",
+        "order": 1
       }
     },
     {
@@ -31,65 +121,144 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["tsx", "apps/server/src/index.ts"],
+      "runtimeArgs": [
+        "tsx",
+        "apps/server/src/index.ts"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
-      "sourceMaps": true
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "sourceMaps": true,
+      "presentation": {
+        "group": "2-debug",
+        "order": 2
+      }
     },
     {
-      "name": "Web only (Vite)",
-      "type": "node",
+      "name": "Debug web (Chrome)",
+      "type": "chrome",
       "request": "launch",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:web"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Serve production build",
-      "type": "node",
-      "request": "launch",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: build"
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web/src",
+      "presentation": {
+        "group": "2-debug",
+        "order": 3
+      },
+      "preLaunchTask": "Wait for web server"
     },
     {
       "name": "Open in Chrome",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/apps/web/src"
+      "webRoot": "${workspaceFolder}/apps/web/src",
+      "noDebug": true,
+      "presentation": {
+        "group": "3-browser",
+        "order": 1
+      },
+      "preLaunchTask": "Wait for web server"
     },
     {
       "name": "Run tests",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vitest", "run"],
+      "runtimeArgs": [
+        "vitest",
+        "run"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+      "noDebug": true,
+      "presentation": {
+        "group": "4-test",
+        "order": 1
+      }
+    },
+    {
+      "name": "Debug tests",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vitest",
+        "run"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "sourceMaps": true,
+      "presentation": {
+        "group": "4-test",
+        "order": 2
+      }
     },
     {
       "name": "Debug current test file",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vitest", "run", "${relativeFile}"],
+      "runtimeArgs": [
+        "vitest",
+        "run",
+        "${relativeFile}"
+      ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"],
-      "sourceMaps": true
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "sourceMaps": true,
+      "presentation": {
+        "group": "4-test",
+        "order": 3
+      }
     }
   ],
   "compounds": [
     {
-      "name": "Start and open browser",
-      "configurations": ["Start StoryTime (server + web)", "Open in Chrome"],
-      "stopAll": true
+      "name": "Run StoryTime and open browser",
+      "configurations": [
+        "Run StoryTime (server + web)",
+        "Open in Chrome"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "group": "1-run",
+        "order": 6
+      }
+    },
+    {
+      "name": "Run server + web separately",
+      "configurations": [
+        "Run API server only",
+        "Run web only (Vite)"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "group": "1-run",
+        "order": 7
+      }
+    },
+    {
+      "name": "Debug StoryTime (server + browser)",
+      "configurations": [
+        "Debug API server",
+        "Debug web (Chrome)"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "group": "2-debug",
+        "order": 4
+      }
     }
   ]
 }

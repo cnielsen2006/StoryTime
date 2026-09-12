@@ -5,7 +5,9 @@
       "type": "npm",
       "script": "build",
       "group": "build",
-      "problemMatcher": ["$tsc"],
+      "problemMatcher": [
+        "$tsc"
+      ],
       "label": "npm: build",
       "detail": "Build shared, web, and server for production"
     },
@@ -13,7 +15,9 @@
       "type": "npm",
       "script": "typecheck",
       "group": "build",
-      "problemMatcher": ["$tsc"],
+      "problemMatcher": [
+        "$tsc"
+      ],
       "label": "npm: typecheck",
       "detail": "Typecheck every workspace"
     },
@@ -52,6 +56,18 @@
         "panel": "shared"
       },
       "detail": "First-time setup: install, migrate, and seed"
+    },
+    {
+      "label": "Wait for web server",
+      "type": "shell",
+      "command": "node scripts/wait-for.mjs http://localhost:5173 60",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "close": true
+      },
+      "detail": "Polls the Vite dev server so a browser launch does not open too early"
     }
   ]
 }
