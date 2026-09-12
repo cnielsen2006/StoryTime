@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": ["$tsc"],
+      "label": "npm: build",
+      "detail": "Build shared, web, and server for production"
+    },
+    {
+      "type": "npm",
+      "script": "typecheck",
+      "group": "build",
+      "problemMatcher": ["$tsc"],
+      "label": "npm: typecheck",
+      "detail": "Typecheck every workspace"
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "label": "npm: test",
+      "detail": "Run the end-to-end suite against the mock provider"
+    },
+    {
+      "type": "npm",
+      "script": "db:migrate",
+      "problemMatcher": [],
+      "label": "npm: db:migrate",
+      "detail": "Apply pending database migrations"
+    },
+    {
+      "type": "npm",
+      "script": "db:seed",
+      "problemMatcher": [],
+      "label": "npm: db:seed",
+      "detail": "Add the sample project (skips if it already exists)"
+    },
+    {
+      "label": "Set up StoryTime",
+      "type": "shell",
+      "command": "npm install && npm run db:migrate && npm run db:seed",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "detail": "First-time setup: install, migrate, and seed"
+    }
+  ]
+}

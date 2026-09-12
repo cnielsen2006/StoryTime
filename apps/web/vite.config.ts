@@ -12,6 +12,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // HOST=0.0.0.0 exposes the dev server to other devices on the network.
+    host: process.env.HOST || '127.0.0.1',
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3001',

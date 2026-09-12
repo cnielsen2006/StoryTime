@@ -11,6 +11,7 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm run dev -w @storytime/server",
     "dev:web": "npm run dev -w @storytime/web",
+    "dev:lan": "node scripts/dev-lan.mjs",
     "build": "npm run build -w @storytime/shared && npm run build -w @storytime/web && npm run build -w @storytime/server",
     "start": "npm run start -w @storytime/server",
     "test": "vitest run",

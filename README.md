@@ -41,6 +41,11 @@ mark it reviewed if you disagree.
 
 ## Quick start
 
+Double-click **`start.bat`**. It installs dependencies on first run, creates
+`.env`, applies migrations, starts both servers, and opens the browser.
+
+Or from a terminal:
+
 ```bash
 npm install
 cp .env.example .env
@@ -58,6 +63,27 @@ To use a real model, put a key in `.env` and pick the provider in Settings:
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+## Ways to start it
+
+| Launcher | What it does |
+|---|---|
+| `start.bat` | Dev mode on http://localhost:5173, opens the browser for you. The usual one. |
+| `start-lan.bat` | Same, but reachable from other devices. Prints the addresses to type on them. |
+| `start-production.bat` | Builds first, then serves everything from http://localhost:3001. No dev tooling running. |
+| `create-shortcuts.ps1` | Puts "StoryTime" and "StoryTime (LAN)" on your desktop. Add `-Remove` to take them off again. |
+
+In VS Code, press F5 and pick a configuration:
+
+- **Start StoryTime (server + web)** for normal work, or the **Start and open
+  browser** compound to launch Chrome with it.
+- **Debug API server** to set breakpoints in the API. It runs the server
+  directly under the debugger rather than through npm.
+- **Start StoryTime (LAN)**, **Web only (Vite)**, **Serve production build**,
+  **Run tests**, and **Debug current test file** cover the rest.
+
+Ctrl+Shift+B runs the build. There is also a **Set up StoryTime** task that does
+install, migrate, and seed in one go.
+
 ## Model providers
 
 Four providers behind one interface, swappable per project in Parameters or
@@ -72,9 +98,11 @@ globally in Settings.
 
 ## Sharing on your network
 
-Set `HOST=0.0.0.0` in `.env` and run `npm run build && npm start`. The server
-then serves the built front end on port 3001, reachable from other machines on
-your network. There is no authentication, so only do this on a network you trust.
+Run `start-lan.bat`, or `npm run dev:lan`. Both bind to every interface and print
+the addresses to type on the other device.
+
+There is no password on this app. Anyone who can reach the address can read and
+edit your book, so only do this on a network you trust.
 
 ## Layout
 
@@ -101,6 +129,7 @@ Inside the server, the pieces worth knowing:
 
 ```bash
 npm run dev        # server on 3001, web on 5173
+npm run dev:lan    # same, reachable from other devices
 npm test           # end-to-end suite against the mock provider
 npm run typecheck  # both packages
 npm run build      # production build
