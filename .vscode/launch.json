@@ -14,7 +14,8 @@
       "console": "integratedTerminal",
       "noDebug": true,
       "env": {
-        "BROWSER": "none"
+        "BROWSER": "none",
+        "HOST": "0.0.0.0"
       },
       "presentation": {
         "group": "1-run",
@@ -36,6 +37,9 @@
       "presentation": {
         "group": "1-run",
         "order": 2
+      },
+      "env": {
+        "HOST": "0.0.0.0"
       }
     },
     {
@@ -53,6 +57,9 @@
       "presentation": {
         "group": "1-run",
         "order": 3
+      },
+      "env": {
+        "HOST": "0.0.0.0"
       }
     },
     {
@@ -91,6 +98,9 @@
       "presentation": {
         "group": "1-run",
         "order": 5
+      },
+      "env": {
+        "HOST": "0.0.0.0"
       }
     },
     {
@@ -109,7 +119,8 @@
         "${workspaceFolder}/node_modules/**"
       ],
       "env": {
-        "BROWSER": "none"
+        "BROWSER": "none",
+        "HOST": "0.0.0.0"
       },
       "presentation": {
         "group": "2-debug",
@@ -135,6 +146,9 @@
       "presentation": {
         "group": "2-debug",
         "order": 2
+      },
+      "env": {
+        "HOST": "0.0.0.0"
       }
     },
     {

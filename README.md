@@ -85,9 +85,14 @@ Run, no debugger:
 | Run StoryTime (server + web) | Both, the usual choice |
 | Run API server only | Just the API on port 3001 |
 | Run web only (Vite) | Just the front end on port 5173 |
-| Run StoryTime (LAN) | Both, reachable from other devices |
+| Run StoryTime (LAN) | Both, plus a printed list of addresses to use |
 | Run production build | Builds first, then serves from port 3001 |
 | Run tests | The end-to-end suite |
+
+Every entry that starts a server binds to all interfaces, so you can open the
+app from a phone or another computer on the same network, not just this machine.
+Both servers print the addresses to type when they start. **Run StoryTime (LAN)**
+differs only in gathering those addresses into one list up front.
 
 Debug, breakpoints active:
 
@@ -122,8 +127,17 @@ globally in Settings.
 
 ## Sharing on your network
 
-Run `start-lan.bat`, or `npm run dev:lan`. Both bind to every interface and print
-the addresses to type on the other device.
+Any of these reach the app from another device:
+
+- `start-lan.bat`, or `npm run dev:lan`
+- Any VS Code launch entry that starts a server
+- `npm run dev` with `HOST=0.0.0.0` set
+
+All of them print the addresses to type on the other device. Use the one on your
+normal network, usually the `192.168.x.x` address.
+
+Plain `npm run dev` from a terminal still binds to this machine only, unless you
+set `HOST=0.0.0.0` or put it in `.env`.
 
 There is no password on this app. Anyone who can reach the address can read and
 edit your book, so only do this on a network you trust.
