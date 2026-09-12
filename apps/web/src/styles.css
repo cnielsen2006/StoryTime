@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #d7dbe3;
+  --color-ink-300: #b2b9c8;
+  --color-ink-400: #8792a8;
+  --color-ink-500: #67728a;
+  --color-ink-600: #515a70;
+  --color-ink-700: #41485a;
+  --color-ink-800: #2d3242;
+  --color-ink-900: #1c202c;
+  --color-ink-950: #11141c;
+
+  --color-lamp-400: #d9a33a;
+  --color-lamp-500: #c08a22;
+  --color-lamp-600: #9c6e16;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Manuscript prose gets a reading measure and serif face. */
+.prose-manuscript {
+  font-family: ui-serif, Georgia, 'Times New Roman', serif;
+  line-height: 1.75;
+  max-width: 38rem;
+}
+
+.prose-manuscript p {
+  margin-bottom: 1rem;
+}
+
+@layer components {
+  /* Tailwind v4 cannot @apply a class defined in the same layer, so the shared
+     button base is repeated rather than composed. */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-ink-800 text-white hover:bg-ink-700;
+  }
+  .btn-secondary {
+    @apply border border-ink-200 bg-white text-ink-700 hover:bg-ink-100;
+  }
+  .btn-ghost {
+    @apply text-ink-500 hover:bg-ink-100 hover:text-ink-800;
+  }
+  .btn-danger {
+    @apply border border-red-200 bg-white text-red-600 hover:bg-red-50;
+  }
+
+  .field {
+    @apply w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900
+      placeholder:text-ink-400 focus:border-ink-400 focus:ring-2 focus:ring-ink-200 focus:outline-none;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold tracking-wide text-ink-500 uppercase;
+  }
+  .card {
+    @apply rounded-lg border border-ink-200 bg-white shadow-sm;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-xs text-ink-600;
+  }
+}

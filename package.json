@@ -1,0 +1,31 @@
+{
+  "name": "storytime",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev -w @storytime/server",
+    "dev:web": "npm run dev -w @storytime/web",
+    "build": "npm run build -w @storytime/shared && npm run build -w @storytime/web && npm run build -w @storytime/server",
+    "start": "npm run start -w @storytime/server",
+    "test": "vitest run",
+    "typecheck": "tsc -b packages/shared apps/server apps/web",
+    "db:generate": "npm run db:generate -w @storytime/server",
+    "db:migrate": "npm run db:migrate -w @storytime/server",
+    "db:seed": "npm run db:seed -w @storytime/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "drizzle-orm": "^0.45.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
