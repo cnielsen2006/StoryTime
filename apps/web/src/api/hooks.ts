@@ -16,6 +16,8 @@ import type {
   Relationship,
   RunPreview,
   RunDetail,
+  SeedProjectRequest,
+  SeedProjectResponse,
   Scene,
   StoryParameters,
   EntityRevision,
@@ -450,6 +452,25 @@ export function useSaveSettings() {
   return useMutation({
     mutationFn: (body: Partial<AppSettings>) => put<AppSettings>('/settings', body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  });
+}
+
+// --- Inventing a new project ------------------------------------------------
+
+export interface IdeateOptions {
+  categories: ReadonlyArray<{ id: string; label: string; hint: string }>;
+  audiences: ReadonlyArray<{ id: string; label: string }>;
+  sizes: ReadonlyArray<{ id: string; label: string; detail: string }>;
+}
+
+export const useIdeateOptions = () =>
+  useQuery({ queryKey: ['ideate-options'], queryFn: () => get<IdeateOptions>('/ideate/options'), staleTime: Infinity });
+
+export function useIdeateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SeedProjectRequest) => post<SeedProjectResponse>('/ideate', body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
 

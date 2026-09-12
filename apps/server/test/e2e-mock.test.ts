@@ -443,3 +443,128 @@ describe('whole-draft and scene modes', () => {
     expect(scene.wordCount).toBeGreaterThan(0);
   });
 });
+
+describe('inventing a project with AI', () => {
+  it('offers the categories the wizard needs', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/ideate/options' });
+    expect(res.statusCode).toBe(200);
+    const options = res.json();
+    expect(options.categories.length).toBeGreaterThan(5);
+    expect(options.categories.some((c: { id: string }) => c.id === 'surprise')).toBe(true);
+    // Every category needs a hint, since it steers the prompt.
+    for (const category of options.categories) expect(category.hint.length).toBeGreaterThan(20);
+  });
+
+  it('creates a complete, fully linked project from a category', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ideate',
+      payload: { category: 'fantasy', size: 'medium', provider: 'mock', model: 'mock-fast' },
+    });
+    expect(res.statusCode, res.payload).toBe(201);
+
+    const result = res.json();
+    expect(result.title).toContain('MOCK');
+    expect(result.premise.length).toBeGreaterThan(10);
+    expect(result.counts.characters).toBeGreaterThan(0);
+    expect(result.counts.plotPoints).toBeGreaterThan(0);
+    // Every cross-reference in the fixture resolves, so nothing is dropped.
+    expect(result.warnings).toEqual([]);
+
+    const graph = (await app.inject({ method: 'GET', url: `/api/projects/${result.projectId}/graph` })).json();
+
+    expect(graph.storyParameters.pov).toBeTruthy();
+    expect(graph.storyParameters.comparableTitles.length).toBeGreaterThan(0);
+    expect(graph.characters.every((c: { experiences: unknown[] }) => c.experiences.length > 0)).toBe(true);
+    expect(graph.relationships.length).toBeGreaterThan(0);
+    expect(graph.locations.every((l: { sensoryDetails: string | null }) => Boolean(l.sensoryDetails))).toBe(true);
+
+    const points = graph.plotLines.flatMap((l: { points: unknown[] }) => l.points);
+    expect(points.every((p: { characterIds: string[] }) => p.characterIds.length > 0)).toBe(true);
+    expect(points.every((p: { locationIds: string[] }) => p.locationIds.length > 0)).toBe(true);
+    // A useful skeleton leaves some beats unsettled rather than all confirmed.
+    expect(new Set(points.map((p: { status: string }) => p.status)).size).toBeGreaterThan(1);
+
+    // Open questions land in the inbox as real ideas to triage.
+    expect(graph.counts.ideasInbox).toBeGreaterThan(0);
+  });
+
+  it('gives generated entities a creation revision, so history works from the first edit', async () => {
+    const created = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/ideate',
+        payload: { category: 'mystery', size: 'small', provider: 'mock', model: 'mock-fast' },
+      })
+    ).json();
+
+    const characters = (
+      await app.inject({ method: 'GET', url: `/api/projects/${created.projectId}/characters` })
+    ).json();
+    const first = characters[0];
+
+    const before = (
+      await app.inject({ method: 'GET', url: `/api/entities/character/${first.id}/revisions` })
+    ).json();
+    expect(before).toHaveLength(1);
+    expect(before[0].summary).toBe('created');
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/characters/${first.id}`,
+      payload: { backstory: 'Edited after generation.' },
+    });
+
+    const after = (
+      await app.inject({ method: 'GET', url: `/api/entities/character/${first.id}/revisions` })
+    ).json();
+    expect(after).toHaveLength(2);
+    expect(after[0].summary).toContain('backstory');
+  });
+
+  it('can generate chapters from an invented project straight away', async () => {
+    const created = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/ideate',
+        payload: { category: 'horror', size: 'small', provider: 'mock', model: 'mock-fast' },
+      })
+    ).json();
+
+    const runRes = await app.inject({
+      method: 'POST',
+      url: `/api/projects/${created.projectId}/runs`,
+      payload: { mode: 'chapters', kind: 'outline' },
+    });
+    expect(runRes.statusCode).toBe(202);
+    const run = await waitForRun((runRes.json() as { runId: string }).runId);
+    expect(run.status, run.error ?? '').toBe('succeeded');
+  });
+
+  it('carries the author premise into the prompt', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ideate',
+      payload: {
+        category: 'surprise',
+        size: 'small',
+        premise: 'A town where nobody has dreamed in forty years.',
+        provider: 'mock',
+        model: 'mock-fast',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    // The mock ignores the premise, but the request must be accepted and the
+    // project must still come out complete.
+    expect(res.json().counts.characters).toBeGreaterThan(0);
+  });
+
+  it('rejects an unknown category', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ideate',
+      payload: { category: 'not-a-genre', provider: 'mock' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});

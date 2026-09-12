@@ -9,6 +9,7 @@ export * from './schemas/manuscript.js';
 export * from './schemas/run.js';
 export * from './schemas/revision.js';
 export * from './schemas/settings.js';
+export * from './schemas/ideate.js';
 export * from './schemas/llm.js';
 export type { ProjectGraph, RunEvent, RunEventType, StaleSummaryItem } from './api-types.js';
 export { ProjectGraph as ProjectGraphSchema } from './api-types.js';

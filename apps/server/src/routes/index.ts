@@ -3,6 +3,7 @@ import { characterRoutes } from './characters.js';
 import { chapterRoutes } from './chapters.js';
 import { exportRoutes } from './export.js';
 import { ideaRoutes } from './ideas.js';
+import { ideateRoutes } from './ideate.js';
 import { locationRoutes } from './locations.js';
 import { plotRoutes } from './plot.js';
 import { projectRoutes } from './projects.js';
@@ -19,6 +20,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(locationRoutes);
   await app.register(plotRoutes);
   await app.register(ideaRoutes);
+  await app.register(ideateRoutes);
   await app.register(chapterRoutes);
   await app.register(versionRoutes);
   await app.register(revisionRoutes);

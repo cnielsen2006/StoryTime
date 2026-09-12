@@ -9,6 +9,13 @@ SQLite file under `data/`.
 
 ## What it does
 
+**Start.** A book can begin empty, or you can pick a genre and have the model
+invent one: a premise, a cast with histories and relationships, places with
+sensory detail, and a plot skeleton with some beats deliberately left unsettled.
+The questions it chose not to answer land in your inbox. What comes out is an
+ordinary project, editable and revisable like any other, so treat every word of
+it as a first draft.
+
 **Collect.** A quick-capture inbox takes anything you type without asking where
 it belongs. File ideas later against a character, a place, or a plot point, or
 turn one straight into a new entity. An idea can touch several things at once.
@@ -56,6 +63,10 @@ npm run dev
 
 Open http://localhost:5173. The seeded project uses the mock provider, so it runs
 with no API key and no network.
+
+**Invent a book** on the projects page generates a whole starting bible from a
+genre. Without an API key it produces obvious placeholder content, so add a key
+first if you want a real one.
 
 To use a real model, put a key in `.env` and pick the provider in Settings:
 
@@ -162,6 +173,9 @@ Inside the server, the pieces worth knowing:
   server-sent events, and saves versions with the entity revisions behind them.
 - `services/staleness.ts` compares those recorded revisions against the current
   ones to decide what is out of date.
+- `generation/ideate.ts` invents a whole project from a genre and writes it into
+  the normal tables, resolving the names the model used into real ids and
+  reporting anything it could not match.
 
 ## Commands
 

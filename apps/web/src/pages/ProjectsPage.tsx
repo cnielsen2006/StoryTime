@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCreateProject, useDeleteProject, useProjects } from '../api/hooks.js';
 import { EmptyState, ErrorNote, Modal, Spinner, TextArea, TextInput, formatCount } from '../components/ui.js';
+import { IdeateModal } from '../components/IdeateModal.js';
 
 export function ProjectsPage() {
   const { data: projects, isLoading, error } = useProjects();
@@ -9,6 +10,7 @@ export function ProjectsPage() {
   const deleteProject = useDeleteProject();
 
   const [creating, setCreating] = useState(false);
+  const [inventing, setInventing] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -33,6 +35,9 @@ export function ProjectsPage() {
           <Link to="/settings" className="btn-secondary">
             Settings
           </Link>
+          <button className="btn-secondary" onClick={() => setInventing(true)}>
+            Invent a book
+          </button>
           <button className="btn-primary" onClick={() => setCreating(true)}>
             New book
           </button>
@@ -47,9 +52,14 @@ export function ProjectsPage() {
           title="No books yet"
           body="A book starts as a title and nothing else. Add characters, places, and half-formed plot points as they occur to you, then generate when there is enough to work with."
           action={
-            <button className="btn-primary" onClick={() => setCreating(true)}>
-              Start your first book
-            </button>
+            <div className="flex gap-2">
+              <button className="btn-secondary" onClick={() => setInventing(true)}>
+                Invent one for me
+              </button>
+              <button className="btn-primary" onClick={() => setCreating(true)}>
+                Start from scratch
+              </button>
+            </div>
           }
         />
       ) : null}
@@ -87,6 +97,8 @@ export function ProjectsPage() {
           </div>
         ))}
       </div>
+
+      <IdeateModal open={inventing} onClose={() => setInventing(false)} />
 
       <Modal open={creating} title="New book" onClose={() => setCreating(false)}>
         <div className="space-y-4">

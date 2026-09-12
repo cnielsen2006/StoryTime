@@ -188,6 +188,134 @@ export class MockProvider implements LlmProvider {
       };
     }
 
+    if (req.schemaName === 'seed_project') {
+      // Mirrors the shape a real model returns, with cross-references that
+      // actually resolve, so the materializer is exercised properly.
+      const cast = ['Mira Halloway', 'Edvin Roke', 'The Warden'];
+      const places = ['The Tidewater Archive', 'Lowmarket', 'The Sunken Stair'];
+      return {
+        title: '[MOCK] The Tidewater Archive',
+        premise: 'A junior archivist finds a record of a flood that has not happened yet.',
+        storyParameters: {
+          audience: 'Adult',
+          genre: 'Mock literary fantasy',
+          tone: 'Quiet and uneasy',
+          pov: 'Third person limited, Mira',
+          tense: 'Past tense',
+          targetLengthWords: 60000,
+          styleNotes: 'Short paragraphs. Concrete detail over abstraction.',
+          contentGuidelines: 'No graphic violence.',
+          comparableTitles: ['Piranesi', 'The Essex Serpent'],
+        },
+        characters: cast.map((name, index) => ({
+          name,
+          role: index === 0 ? 'protagonist' : index === 2 ? 'antagonist' : 'supporting',
+          description: `[MOCK] ${name} works in and around the archive.`,
+          appearance: 'Ink-stained cuffs and a careful way of standing.',
+          personality: 'Watchful, and slow to admit being wrong.',
+          backstory: 'Came to the city after the last flood took the family house.',
+          arcNotes: 'From cataloguing the past to acting on the future.',
+          experiences: [
+            {
+              whenLabel: 'Age eleven',
+              title: 'The water came',
+              description: 'Watched the lower streets go under in a single night.',
+              impact: 'A habit of writing everything down before it can be lost.',
+            },
+            {
+              whenLabel: 'Last winter',
+              title: 'The misfiled record',
+              description: 'Found a document dated three years ahead.',
+              impact: 'A suspicion that the archive is not only a record.',
+            },
+          ],
+        })),
+        relationships: [
+          {
+            fromCharacter: cast[0]!,
+            toCharacter: cast[1]!,
+            kind: 'uneasy colleagues',
+            description: 'They want the same post and cannot say so.',
+          },
+          {
+            fromCharacter: cast[2]!,
+            toCharacter: cast[0]!,
+            kind: 'keeper and apprentice',
+            description: 'The Warden wants the record left exactly where it is.',
+          },
+        ],
+        locations: places.map((name) => ({
+          name,
+          description: `[MOCK] ${name}.`,
+          sensoryDetails: 'Wet paper, lamp oil, and the sound of water somewhere below.',
+          rulesLore: 'Nothing may leave the building.',
+        })),
+        plotLines: [
+          {
+            name: 'The record of the flood',
+            description: 'Mira works out what the misfiled document means.',
+            kind: 'main',
+            points: [
+              {
+                title: 'Mira finds the document',
+                summary: 'A record dated three years ahead, in the archive hand.',
+                status: 'confirmed',
+                characters: [cast[0]!],
+                locations: [places[0]!],
+              },
+              {
+                title: 'The Warden notices it is missing',
+                summary: 'A quiet question that is not really a question.',
+                status: 'confirmed',
+                characters: [cast[0]!, cast[2]!],
+                locations: [places[0]!],
+              },
+              {
+                title: 'Edvin offers to help, for a price',
+                summary: 'He wants his name on whatever comes of it.',
+                status: 'draft',
+                characters: [cast[0]!, cast[1]!],
+                locations: [places[1]!],
+              },
+              {
+                title: 'The stair floods early',
+                summary: 'The date on the record turns out to be optimistic.',
+                status: 'idea',
+                characters: [cast[0]!],
+                locations: [places[2]!],
+              },
+            ],
+          },
+          {
+            name: 'Who keeps the archive',
+            description: 'The succession nobody will discuss.',
+            kind: 'subplot',
+            points: [
+              {
+                title: 'The post falls vacant',
+                summary: 'Both of them want it and neither will say so.',
+                status: 'confirmed',
+                characters: [cast[0]!, cast[1]!],
+                locations: [places[0]!],
+              },
+              {
+                title: 'A vote in Lowmarket',
+                summary: 'The city decides something it does not understand.',
+                status: 'idea',
+                characters: [cast[1]!],
+                locations: [places[1]!],
+              },
+            ],
+          },
+        ],
+        openQuestions: [
+          'Does the archive write the records, or only keep them?',
+          'Is the Warden protecting the city or the building?',
+          'Should Mira be believed by anyone before the flood arrives?',
+        ],
+      };
+    }
+
     if (req.schemaName === 'triage') {
       return {
         links: [
