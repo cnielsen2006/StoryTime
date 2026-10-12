@@ -15,12 +15,16 @@ import {
   useVersions,
 } from '../api/hooks.js';
 import { EmptyState, ErrorNote, Modal, Spinner, StaleBadge, TextArea, formatWhen } from '../components/ui.js';
+import { ReadableText } from '../components/ReadableText.js';
+import { getReadingSettings } from '../reading/settings.js';
 
 export function ManuscriptPage() {
   const { projectId = '' } = useParams();
   const { data: chapters, isLoading } = useChapters(projectId);
   const { data: manuscript } = useManuscript(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Set when reading carried on from the previous chapter, so this one starts on its own.
+  const [listenOnOpenId, setListenOnOpenId] = useState<string | null>(null);
   const splitDraft = useSplitDraft(projectId);
 
   useEffect(() => {
@@ -28,6 +32,15 @@ export function ManuscriptPage() {
   }, [chapters, selectedId]);
 
   const selected = chapters?.find((c) => c.id === selectedId) ?? null;
+
+  const continueReading = () => {
+    if (!chapters || !getReadingSettings().continueToNext) return;
+    const index = chapters.findIndex((c) => c.id === selectedId);
+    const next = chapters.slice(index + 1).find((c) => c.currentVersionId);
+    if (!next) return;
+    setSelectedId(next.id);
+    setListenOnOpenId(next.id);
+  };
 
   if (isLoading) return <Spinner />;
 
@@ -47,9 +60,7 @@ export function ManuscriptPage() {
           </button>
         </div>
         <ErrorNote error={splitDraft.error} />
-        <article className="card prose-manuscript max-w-none p-8 whitespace-pre-wrap text-ink-800">
-          {manuscript.draft}
-        </article>
+        <ReadableText text={manuscript.draft} className="card prose-manuscript max-w-none p-8 text-ink-800" />
       </div>
     );
   }
@@ -74,7 +85,10 @@ export function ManuscriptPage() {
         {chapters?.map((chapter, index) => (
           <li key={chapter.id}>
             <button
-              onClick={() => setSelectedId(chapter.id)}
+              onClick={() => {
+                setSelectedId(chapter.id);
+                setListenOnOpenId(null);
+              }}
               className={`w-full rounded-md px-3 py-2 text-left ${
                 selectedId === chapter.id ? 'bg-ink-800 text-white' : 'text-ink-700 hover:bg-ink-100'
               }`}
@@ -100,12 +114,30 @@ export function ManuscriptPage() {
         ))}
       </ul>
 
-      {selected ? <ChapterView key={selected.id} projectId={projectId} chapter={selected} /> : null}
+      {selected ? (
+        <ChapterView
+          key={selected.id}
+          projectId={projectId}
+          chapter={selected}
+          listenOnOpen={listenOnOpenId === selected.id}
+          onListenFinished={continueReading}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ChapterView({ projectId, chapter }: { projectId: string; chapter: Chapter }) {
+function ChapterView({
+  projectId,
+  chapter,
+  listenOnOpen,
+  onListenFinished,
+}: {
+  projectId: string;
+  chapter: Chapter;
+  listenOnOpen: boolean;
+  onListenFinished: () => void;
+}) {
   const navigate = useNavigate();
   const { data: graph } = useProjectGraph(projectId);
   const { data: scenes } = useScenes(chapter.id);
@@ -219,9 +251,12 @@ function ChapterView({ projectId, chapter }: { projectId: string; chapter: Chapt
       ) : null}
 
       {active ? (
-        <article className="card prose-manuscript max-w-none p-8 whitespace-pre-wrap text-ink-800">
-          {active.content}
-        </article>
+        <ReadableText
+          text={active.content}
+          className="card prose-manuscript max-w-none p-8 text-ink-800"
+          autoStart={listenOnOpen && active.isCurrent}
+          onFinished={active.isCurrent ? onListenFinished : undefined}
+        />
       ) : hasScenes ? null : (
         <EmptyState title="Not written yet" body="Use Write it above, or generate several chapters at once." />
       )}

@@ -40,6 +40,16 @@ instructions and the prior text stays as the baseline, so unmentioned parts are
 left alone. Compare any two versions, roll back to an earlier one, or edit by
 hand and save that as a new version.
 
+**Listen.** Press Listen above any chapter to hear it read aloud, with the
+paragraph being read highlighted. Pause, skip a paragraph, or click any
+paragraph to read from there, and it carries on into the next chapter. Pick the
+voice, speed and volume in Settings. By default the server reads with
+[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a small open speech model
+that sounds far more natural than most built-in voices and runs on the CPU
+without sending text anywhere. The first time you listen it downloads about
+90 MB into `data/models`. Every device on the LAN hears the same voices. You can
+switch to your browser's own voices in Settings instead.
+
 **Stay in sync.** When you change a character after a chapter was written from
 it, that chapter is flagged immediately, with the field that changed. Changes to
 a character the chapter was *about* flag it for rewrite; changes to background

@@ -10,6 +10,7 @@ import { projectRoutes } from './projects.js';
 import { revisionRoutes } from './revisions.js';
 import { runRoutes } from './runs.js';
 import { settingsRoutes } from './settings.js';
+import { speechRoutes } from './speech.js';
 import { versionRoutes } from './versions.js';
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -27,4 +28,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(runRoutes);
   await app.register(exportRoutes);
   await app.register(settingsRoutes);
+  await app.register(speechRoutes);
 }

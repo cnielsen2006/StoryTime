@@ -11,6 +11,7 @@ import {
   useTestProvider,
 } from '../api/hooks.js';
 import { ErrorNote, Select, Spinner, TextInput } from '../components/ui.js';
+import { ReadingVoiceSection } from '../components/ReadingVoiceSection.js';
 
 /** What the server found when it looked for a Claude credential. */
 const CREDENTIAL_LABELS: Record<string, string> = {
@@ -195,6 +196,8 @@ export function SettingsPage() {
           </div>
         ) : null}
       </section>
+
+      <ReadingVoiceSection />
 
       <section className="mt-10 space-y-3 border-t border-ink-200 pt-8">
         <h2 className="text-base font-semibold text-ink-900">Providers</h2>
