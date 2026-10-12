@@ -8,12 +8,13 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "npm run dev -w @storytime/server",
-    "dev:web": "npm run dev -w @storytime/web",
+    "dev": "node scripts/free-ports.mjs api web && concurrently -n server,web -c cyan,magenta \"npm run dev -w @storytime/server\" \"npm run dev -w @storytime/web\"",
+    "dev:server": "node scripts/free-ports.mjs api && npm run dev -w @storytime/server",
+    "dev:web": "node scripts/free-ports.mjs web && npm run dev -w @storytime/web",
     "dev:lan": "node scripts/dev-lan.mjs",
     "build": "npm run build -w @storytime/shared && npm run build -w @storytime/web && npm run build -w @storytime/server",
-    "start": "npm run start -w @storytime/server",
+    "start": "node scripts/free-ports.mjs api web && npm run start -w @storytime/server",
+    "stop": "node scripts/free-ports.mjs api web",
     "test": "vitest run",
     "typecheck": "tsc -b packages/shared apps/server apps/web",
     "db:generate": "npm run db:generate -w @storytime/server",

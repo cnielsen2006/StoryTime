@@ -22,6 +22,10 @@ if not exist ".env" (
   )
 )
 
+REM Launching again restarts the app: stop any copy already running first, so
+REM it is not holding the database while migrations run.
+call node scripts\free-ports.mjs || goto :failed
+
 call npm run db:migrate || goto :failed
 
 REM dev:lan prints the addresses to use from other devices and binds to 0.0.0.0.

@@ -58,6 +58,18 @@
       "detail": "First-time setup: install, migrate, and seed"
     },
     {
+      "label": "Stop running API server",
+      "type": "shell",
+      "command": "node scripts/free-ports.mjs api",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "close": true
+      },
+      "detail": "Stops a StoryTime already holding the API port, so debugging restarts it instead of failing"
+    },
+    {
       "label": "Wait for web server",
       "type": "shell",
       "command": "node scripts/wait-for.mjs http://localhost:5173 60",

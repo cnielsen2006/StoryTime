@@ -137,6 +137,7 @@
         "apps/server/src/index.ts"
       ],
       "cwd": "${workspaceFolder}",
+      "preLaunchTask": "Stop running API server",
       "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**",

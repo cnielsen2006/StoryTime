@@ -25,6 +25,10 @@ if not exist ".env" (
   )
 )
 
+REM Launching again restarts the app: stop any copy already running first, so
+REM it is not holding the database while migrations run.
+call node scripts\free-ports.mjs || goto :failed
+
 echo  Applying database migrations...
 call npm run db:migrate || goto :failed
 echo.

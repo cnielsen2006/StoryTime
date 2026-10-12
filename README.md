@@ -83,6 +83,13 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `start-production.bat` | Builds first, then serves everything from http://localhost:3001. No dev tooling running. |
 | `create-shortcuts.ps1` | Puts "StoryTime" and "StoryTime (LAN)" on your desktop. Add `-Remove` to take them off again. |
 
+Only one copy runs at a time. Launching again, by any of these or from VS Code,
+stops the copy already running, closes its window, and starts fresh, so a
+second double-click restarts the app. A launch only stops what it is about to
+replace: running the API on its own leaves a separate web server alone. It never
+touches a program that is not StoryTime; if one holds the port, it says so and
+stops. `npm run stop` shuts StoryTime down without starting it again.
+
 ### In VS Code
 
 Press F5, or pick from the Run and Debug dropdown. Entries are grouped: the
