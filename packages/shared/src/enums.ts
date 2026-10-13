@@ -12,7 +12,7 @@ export const GENERATION_MODE_LABELS: Record<GenerationMode, string> = {
 };
 
 /** What a run is asked to do. */
-export const RUN_KINDS = ['outline', 'generate', 'update', 'split'] as const;
+export const RUN_KINDS = ['outline', 'generate', 'update', 'split', 'attribute', 'chat'] as const;
 export const RunKind = z.enum(RUN_KINDS);
 export type RunKind = z.infer<typeof RunKind>;
 

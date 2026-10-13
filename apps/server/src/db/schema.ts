@@ -58,6 +58,8 @@ export const characters = sqliteTable(
     personality: text('personality'),
     backstory: text('backstory'),
     arcNotes: text('arc_notes'),
+    /** Kokoro voice for read-aloud. Kept out of change history: a new voice must not flag chapters as stale. */
+    voice: text('voice'),
     sortOrder: integer('sort_order').notNull().default(0),
     revision: integer('revision').notNull().default(1),
     ...stamps,
@@ -237,6 +239,8 @@ export const generationRuns = sqliteTable(
     model: text('model').notNull(),
     effort: text('effort').notNull(),
     instructions: text('instructions'),
+    /** The revision chat a chat run belongs to. */
+    chatId: text('chat_id'),
     status: text('status').notNull().default('queued'),
     bibleMarkdown: text('bible_markdown'),
     bibleHash: text('bible_hash'),
@@ -368,4 +372,55 @@ export const entityRevisions = sqliteTable(
     uniqueIndex('entity_revisions_unique').on(t.entityType, t.entityId, t.revision),
     index('entity_revisions_entity_idx').on(t.entityType, t.entityId, t.createdAt),
   ],
+);
+
+/**
+ * Who speaks each quoted passage of one version, found by the model or corrected
+ * by the author. Versions never change after they are written, so the stored
+ * positions stay valid for the life of the row.
+ */
+export const dialogueAttributions = sqliteTable('dialogue_attributions', {
+  versionId: text('version_id')
+    .primaryKey()
+    .references(() => generatedVersions.id, { onDelete: 'cascade' }),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  narratorId: text('narrator_id'),
+  quotes: text('quotes').notNull().default('[]'),
+  source: text('source').notNull().default('model'),
+  ...stamps,
+});
+
+/** One revision conversation per place in the manuscript: a chapter, a scene, the draft, or the whole book. */
+export const revisionChats = sqliteTable(
+  'revision_chats',
+  {
+    id: text('id').primaryKey(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    scopeType: text('scope_type').notNull(),
+    scopeId: text('scope_id').notNull(),
+    ...stamps,
+  },
+  (t) => [uniqueIndex('revision_chats_scope').on(t.projectId, t.scopeType, t.scopeId)],
+);
+
+export const revisionChatMessages = sqliteTable(
+  'revision_chat_messages',
+  {
+    id: text('id').primaryKey(),
+    chatId: text('chat_id')
+      .notNull()
+      .references(() => revisionChats.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    content: text('content').notNull().default(''),
+    /** JSON list of the versions the assistant wrote this turn. */
+    applied: text('applied').notNull().default('[]'),
+    error: text('error'),
+    runId: text('run_id'),
+    createdAt: integer('created_at').notNull().$defaultFn(now),
+  },
+  (t) => [index('revision_chat_messages_chat_idx').on(t.chatId, t.createdAt)],
 );

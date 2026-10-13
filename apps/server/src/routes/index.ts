@@ -1,5 +1,8 @@
 import type { FastifyInstance } from 'fastify';
+import { backupRoutes } from './backups.js';
 import { characterRoutes } from './characters.js';
+import { chatRoutes } from './chats.js';
+import { dialogueRoutes } from './dialogue.js';
 import { chapterRoutes } from './chapters.js';
 import { exportRoutes } from './export.js';
 import { ideaRoutes } from './ideas.js';
@@ -29,4 +32,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(exportRoutes);
   await app.register(settingsRoutes);
   await app.register(speechRoutes);
+  await app.register(dialogueRoutes);
+  await app.register(chatRoutes);
+  await app.register(backupRoutes);
 }

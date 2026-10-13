@@ -52,6 +52,7 @@ export function GeneratePage() {
   const [chapterHint, setChapterHint] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [preview, setPreview] = useState<RunPreview | null>(null);
+  const [attributeDialogue, setAttributeDialogue] = useLocalStorage<boolean>('storytime:attribute-dialogue', true);
 
   const previewRun = usePreviewRun(projectId);
   const startRun = useStartRun(projectId);
@@ -71,6 +72,7 @@ export function GeneratePage() {
     ...(effort ? { effort } : {}),
     ...(targetWords ? { targetLengthWords: Number(targetWords) } : {}),
     ...(chapterHint ? { chapterCountHint: Number(chapterHint) } : {}),
+    ...(kind === 'generate' && mode !== 'draft' ? { attributeDialogue } : {}),
   });
 
   const runPreview = async () => {
@@ -202,6 +204,23 @@ export function GeneratePage() {
               { value: 'max', label: 'Maximum, slowest' },
             ]}
           />
+
+          {kind === 'generate' && mode !== 'draft' ? (
+            <label className="flex items-start gap-2 text-sm text-ink-700">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={attributeDialogue}
+                onChange={(e) => setAttributeDialogue(e.target.checked)}
+              />
+              <span>
+                Work out who speaks each line, so characters can read their own dialogue aloud.
+                <span className="block text-xs text-ink-400">
+                  One extra, cheap model call per chapter. You can also do it later from the manuscript.
+                </span>
+              </span>
+            </label>
+          ) : null}
 
           <TextArea
             label="Extra direction for this run"

@@ -32,3 +32,36 @@ describe('reading text', () => {
     expect(segments.slice(1).map((s) => s.text).join(' ')).toBe(long);
   });
 });
+
+describe('reading text with attributed dialogue', () => {
+  const paragraph = '"Get down," she said. "Now."';
+  const quotes = [
+    { paragraph: 0, start: 0, end: 11, speaker: 'mara' },
+    { paragraph: 0, start: 22, end: 28, speaker: null },
+  ];
+
+  it('splits a paragraph at its quotes so each speaker gets their own segment', () => {
+    expect(buildSegments([paragraph], quotes)).toEqual([
+      { paragraph: 0, text: '"Get down,"', dialogue: true, speaker: 'mara' },
+      { paragraph: 0, text: 'she said.', dialogue: false },
+      { paragraph: 0, text: '"Now."', dialogue: true, speaker: null },
+    ]);
+  });
+
+  it('marks paragraphs without dialogue as narration once attribution exists', () => {
+    expect(buildSegments(['Rain fell.', paragraph], quotes.map((q) => ({ ...q, paragraph: 1 })))[0]).toEqual({
+      paragraph: 0,
+      text: 'Rain fell.',
+      dialogue: false,
+    });
+  });
+
+  it('ignores stored quotes that no longer fit the paragraph', () => {
+    const stale = [{ paragraph: 0, start: 0, end: 500, speaker: 'mara' }];
+    expect(buildSegments([paragraph], stale)).toEqual([{ paragraph: 0, text: '"Get down," she said. "Now."', dialogue: false }]);
+  });
+
+  it('leaves segments plain when nothing is attributed', () => {
+    expect(buildSegments([paragraph])).toEqual([{ paragraph: 0, text: '"Get down," she said. "Now."' }]);
+  });
+});

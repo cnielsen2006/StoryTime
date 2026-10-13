@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   ChapterSummaryResult,
@@ -26,9 +25,21 @@ import { estimateTokens, wordsToTokens } from '../llm/tokens.js';
 import { ProviderError, type TextEvent, type Usage } from '../llm/types.js';
 import { badRequest, conflict, newId, notFound } from '../services/entities.js';
 import { currentText, readChapters, readScenes, saveVersion } from '../services/manuscript.js';
+import { attributeWritten, runAttribute } from '../dialogue/run.js';
+import { runChat, type ChatRunInput } from './chat.js';
 import { emit } from './events.js';
 import {
+  accumulate,
+  failRun,
+  finish,
+  hashBible,
+  recordUsage,
+  streamOnce,
+  type RunRecord,
+} from './steps.js';
+import {
   buildRunContext,
+  focusFor,
   focusFromPlotPoints,
   mergeFocus,
   plotPointTitles,
@@ -44,18 +55,6 @@ const inFlight = new Map<string, { runId: string; controller: AbortController }>
 const MAX_CONTINUATIONS = 3;
 const PREVIOUS_TAIL_CHARS = 1500;
 const PREVIOUS_SCENE_TAIL_CHARS = 1000;
-
-export function hashBible(markdown: string): string {
-  return createHash('sha256').update(markdown).digest('hex').slice(0, 16);
-}
-
-function accumulate(total: Usage, next: Usage): Usage {
-  return {
-    inputTokens: total.inputTokens + next.inputTokens,
-    outputTokens: total.outputTokens + next.outputTokens,
-    cacheReadTokens: total.cacheReadTokens + next.cacheReadTokens,
-  };
-}
 
 /** A run left `running` by a crash can never resume, so retire it at boot. */
 export function resetOrphanedRuns(db: Db) {
@@ -84,73 +83,6 @@ export function cancelRun(runId: string): boolean {
   return false;
 }
 
-interface StreamOutcome {
-  text: string;
-  stopReason: StopReason;
-  usage: Usage;
-  error: { message: string; retryable: boolean } | null;
-}
-
-/** Drive one streamed completion, forwarding deltas to the run's SSE channel. */
-async function streamOnce(
-  ctx: RunContext,
-  runId: string,
-  targetId: string,
-  systemPrompt: string,
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  maxTokens: number,
-  effort: Effort,
-  signal: AbortSignal,
-): Promise<StreamOutcome> {
-  let text = '';
-  let stopReason: StopReason = 'other';
-  let usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
-  let error: StreamOutcome['error'] = null;
-
-  const stream = ctx.resolved.provider.generateText(
-    { model: ctx.model, system: systemPrompt, messages, maxTokens, effort },
-    signal,
-  );
-
-  for await (const event of stream as AsyncIterable<TextEvent>) {
-    if (signal.aborted) break;
-    switch (event.type) {
-      case 'text':
-        text += event.delta;
-        emit(runId, { type: 'text', targetId, delta: event.delta });
-        break;
-      case 'status':
-        emit(runId, { type: 'status', message: event.message });
-        break;
-      case 'usage':
-        usage = accumulate(usage, event.usage);
-        break;
-      case 'done':
-        // Providers report the assembled text; prefer it over our accumulation.
-        if (event.text) text = event.text;
-        stopReason = event.stopReason;
-        break;
-      case 'error':
-        error = { message: event.message, retryable: event.retryable };
-        break;
-    }
-  }
-
-  return { text, stopReason, usage, error };
-}
-
-interface RunRecord {
-  id: string;
-  projectId: string;
-}
-
-function finish(db: Db, runId: string, status: RunStatus, patch: Record<string, unknown> = {}) {
-  db.update(generationRuns)
-    .set({ status, finishedAt: Date.now(), ...patch })
-    .where(eq(generationRuns.id, runId))
-    .run();
-}
-
 export interface StartRunResult {
   runId: string;
 }
@@ -160,12 +92,23 @@ export interface StartRunResult {
  * row exists so the HTTP request can hand the client a run id to stream from.
  */
 export function startRun(db: Db, projectId: string, input: RunCreate): StartRunResult {
+  return launch(db, projectId, input, undefined);
+}
+
+/** A revision-chat turn runs like any other run, so it streams, cancels, and locks the project the same way. */
+export function startChatRun(db: Db, projectId: string, chat: ChatRunInput, effort?: Effort): StartRunResult {
+  const input: RunCreate = { mode: 'chapters', kind: 'chat', instructions: chat.message, effort };
+  return launch(db, projectId, input, chat);
+}
+
+function launch(db: Db, projectId: string, input: RunCreate, chat: ChatRunInput | undefined): StartRunResult {
   if (inFlight.has(projectId)) {
     throw conflict('This project already has a generation running. Cancel it first, or wait for it to finish.');
   }
 
   const ctx = buildRunContext(db, projectId, input);
   const runId = newId();
+  const scopeType = chat?.scope.scopeType;
 
   db.insert(generationRuns)
     .values({
@@ -173,8 +116,9 @@ export function startRun(db: Db, projectId: string, input: RunCreate): StartRunR
       projectId,
       mode: input.mode,
       kind: input.kind,
-      targetType: input.targetType ?? null,
-      targetId: input.targetId ?? null,
+      targetType: chat ? (scopeType === 'chapter' || scopeType === 'scene' || scopeType === 'draft' ? scopeType : null) : (input.targetType ?? null),
+      targetId: chat ? chat.scope.scopeId : (input.targetId ?? null),
+      chatId: chat?.chatId ?? null,
       provider: ctx.providerId,
       model: ctx.model,
       effort: ctx.effort,
@@ -186,7 +130,7 @@ export function startRun(db: Db, projectId: string, input: RunCreate): StartRunR
   const controller = new AbortController();
   inFlight.set(projectId, { runId, controller });
 
-  void execute(db, ctx, { id: runId, projectId }, input, controller.signal)
+  void execute(db, ctx, { id: runId, projectId }, input, chat, controller.signal)
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : 'The run failed unexpectedly.';
       finish(db, runId, 'failed', { error: message });
@@ -205,6 +149,7 @@ async function execute(
   ctx: RunContext,
   run: RunRecord,
   input: RunCreate,
+  chat: ChatRunInput | undefined,
   signal: AbortSignal,
 ): Promise<void> {
   db.update(generationRuns)
@@ -215,6 +160,10 @@ async function execute(
   try {
     if (input.kind === 'outline') {
       await runOutline(db, ctx, run, input, signal);
+    } else if (input.kind === 'chat' && chat) {
+      await runChat(db, ctx, run, chat, signal);
+    } else if (input.kind === 'attribute') {
+      await runAttribute(db, ctx, run, input, signal);
     } else if (input.kind === 'update') {
       await runUpdate(db, ctx, run, input, signal);
     } else if (input.mode === 'draft') {
@@ -237,31 +186,6 @@ async function execute(
     finish(db, run.id, 'cancelled');
     emit(run.id, { type: 'done', status: 'cancelled', stopReason: null });
   }
-}
-
-function recordUsage(db: Db, runId: string, usage: Usage, estimated: number, bibleHash: string, bible: string) {
-  db.update(generationRuns)
-    .set({
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens,
-      cacheReadTokens: usage.cacheReadTokens,
-      estimatedInputTokens: estimated,
-      bibleHash,
-      bibleMarkdown: bible,
-    })
-    .where(eq(generationRuns.id, runId))
-    .run();
-  emit(runId, {
-    type: 'usage',
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens,
-    cacheReadTokens: usage.cacheReadTokens,
-  });
-}
-
-function failRun(db: Db, runId: string, message: string, retryable: boolean) {
-  finish(db, runId, 'failed', { error: message });
-  emit(runId, { type: 'error', message, retryable });
 }
 
 // --- Mode (b)/(c) step 1: the outline ---------------------------------------
@@ -528,6 +452,10 @@ async function runChapters(db: Db, ctx: RunContext, run: RunRecord, input: RunCr
       wordCount: version.wordCount,
     });
 
+    if (input.attributeDialogue !== false) {
+      usage = accumulate(usage, await attributeWritten(db, ctx, run, version, signal));
+    }
+
     const summary = await summariseForContinuity(ctx, `chapter ${index + 1}, "${chapter.title}"`, outcome.text, signal);
     if (summary) {
       summaries.set(chapter.id, summary);
@@ -664,6 +592,10 @@ async function runScenes(db: Db, ctx: RunContext, run: RunRecord, input: RunCrea
       versionId: version.id,
       wordCount: version.wordCount,
     });
+
+    if (input.attributeDialogue !== false) {
+      usage = accumulate(usage, await attributeWritten(db, ctx, run, version, signal));
+    }
   }
 
   recordUsage(db, run.id, usage, estimated, lastHash, lastBible);
@@ -734,7 +666,12 @@ async function runUpdate(db: Db, ctx: RunContext, run: RunRecord, input: RunCrea
     makeCurrent: targetType === 'chapter' || targetType === 'scene',
   });
 
-  recordUsage(db, run.id, outcome.usage, estimateTokens(bible.systemPrompt + prompt), hash, bible.markdown);
+  let usage = outcome.usage;
+  if (input.attributeDialogue !== false) {
+    usage = accumulate(usage, await attributeWritten(db, ctx, run, version, signal));
+  }
+
+  recordUsage(db, run.id, usage, estimateTokens(bible.systemPrompt + prompt), hash, bible.markdown);
   emit(run.id, {
     type: 'target_done',
     targetType,
@@ -759,22 +696,6 @@ function resolveTargetLabel(db: Db, ctx: RunContext, targetType: VersionTargetTy
   }
   if (targetType === 'draft') return `the draft of "${ctx.graph.project.title}"`;
   throw badRequest('An outline cannot be revised with instructions. Regenerate it instead.');
-}
-
-function focusFor(ctx: RunContext, targetType: VersionTargetType, targetId: string): Focus {
-  if (targetType === 'chapter') {
-    const chapter = ctx.chapters.find((c) => c.id === targetId);
-    return chapter ? focusFromPlotPoints(ctx.graph, chapter.plotPointIds) : {};
-  }
-  if (targetType === 'scene') {
-    const scene = ctx.scenes.find((s) => s.id === targetId);
-    if (!scene) return {};
-    return mergeFocus(focusFromPlotPoints(ctx.graph, scene.plotPointIds), {
-      characterIds: scene.povCharacterId ? [scene.povCharacterId] : [],
-      locationIds: scene.locationId ? [scene.locationId] : [],
-    });
-  }
-  return {};
 }
 
 export { materializeOutline };

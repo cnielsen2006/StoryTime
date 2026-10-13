@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { Chapter, Effort, GenerationMode, ProviderId, RunCreate, Scene } from '@storytime/shared';
+import type { Chapter, Effort, GenerationMode, ProviderId, RunCreate, Scene, VersionTargetType } from '@storytime/shared';
 import type { Db } from '../db/client.js';
 import { projects } from '../db/schema.js';
 import { defaultBudgetTokens, fitToBudget } from '../bible/budget.js';
@@ -137,4 +137,21 @@ export function tailOf(text: string, maxChars: number): string | null {
   const slice = trimmed.slice(-maxChars);
   const boundary = slice.search(/[.!?]["']?\s/);
   return boundary > 0 && boundary < slice.length - 40 ? slice.slice(boundary + 1).trim() : slice.trim();
+}
+
+/** Which characters and places a chapter or scene is about, for focusing the bible on it. */
+export function focusFor(ctx: RunContext, targetType: VersionTargetType, targetId: string): Focus {
+  if (targetType === 'chapter') {
+    const chapter = ctx.chapters.find((c) => c.id === targetId);
+    return chapter ? focusFromPlotPoints(ctx.graph, chapter.plotPointIds) : {};
+  }
+  if (targetType === 'scene') {
+    const scene = ctx.scenes.find((s) => s.id === targetId);
+    if (!scene) return {};
+    return mergeFocus(focusFromPlotPoints(ctx.graph, scene.plotPointIds), {
+      characterIds: scene.povCharacterId ? [scene.povCharacterId] : [],
+      locationIds: scene.locationId ? [scene.locationId] : [],
+    });
+  }
+  return {};
 }

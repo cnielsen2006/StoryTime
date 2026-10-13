@@ -24,10 +24,14 @@ import {
 import { commitChange } from '../services/revisions.js';
 import { readProject } from './projects.js';
 
-/** Snapshot used for change history: the character plus its ordered experiences. */
+/**
+ * Snapshot used for change history: the character plus its ordered experiences.
+ * The reading voice is left out on purpose: it says nothing about the story, so
+ * changing it must not leave a history entry or flag written chapters as stale.
+ */
 function snapshot(db: Db, id: string): Record<string, unknown> {
   const character = readCharacter(db, id);
-  const { createdAt: _c, updatedAt: _u, ...rest } = character;
+  const { createdAt: _c, updatedAt: _u, voice: _v, ...rest } = character;
   return {
     ...rest,
     experiences: character.experiences.map(({ id: _i, characterId: _ci, ...exp }) => exp),
@@ -62,6 +66,7 @@ export async function characterRoutes(app: FastifyInstance) {
           personality: body.personality ?? null,
           backstory: body.backstory ?? null,
           arcNotes: body.arcNotes ?? null,
+          voice: body.voice || null,
           sortOrder: nextSortOrder(txDb, characters, projectId),
         })
         .run();
@@ -94,6 +99,15 @@ export async function characterRoutes(app: FastifyInstance) {
       const txDb = tx as unknown as Db;
       const before = snapshot(txDb, id);
       const current = readCharacter(txDb, id);
+
+      if ('voice' in body) {
+        tx.update(characters).set({ voice: body.voice || null, updatedAt: Date.now() }).where(eq(characters.id, id)).run();
+      }
+      const touchesStory =
+        body.experiences !== undefined ||
+        ['name', 'role', 'description', 'appearance', 'personality', 'backstory', 'arcNotes'].some((key) => key in body);
+      if (!touchesStory) return readCharacter(txDb, id);
+
       const revision = current.revision + 1;
 
       const patch: Record<string, unknown> = { updatedAt: Date.now(), revision };

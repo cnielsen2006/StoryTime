@@ -34,7 +34,12 @@ const KOKORO_PREFETCH = 2;
  * which silently fails for online voices in Chrome and on Android. Kokoro audio
  * plays in an ordinary audio element, so it pauses and resumes mid-sentence.
  */
-export function useReader(segments: SpeechSegment[], onFinished?: () => void): Reader {
+export function useReader(
+  segments: SpeechSegment[],
+  onFinished?: () => void,
+  /** Which Kokoro voice reads a segment. Defaults to the voice chosen in settings. */
+  voiceFor?: (segment: SpeechSegment) => string,
+): Reader {
   const [settings] = useReadingSettings();
   const voices = useVoices();
   const [status, setStatus] = useState<ReaderStatus>('idle');
@@ -50,8 +55,8 @@ export function useReader(segments: SpeechSegment[], onFinished?: () => void): R
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   // The segment whose Kokoro audio sits in the shared element, so Resume can carry on from it.
   const loadedRef = useRef<number | null>(null);
-  const latest = useRef({ segments, settings, voices, onFinished, status, position });
-  latest.current = { segments, settings, voices, onFinished, status, position };
+  const latest = useRef({ segments, settings, voices, onFinished, status, position, voiceFor });
+  latest.current = { segments, settings, voices, onFinished, status, position, voiceFor };
 
   const releaseRef = useRef(() => {
     tokenRef.current += 1;
@@ -123,12 +128,12 @@ export function useReader(segments: SpeechSegment[], onFinished?: () => void): R
   };
 
   const playKokoro = (index: number, token: number) => {
-    const { segments, settings } = latest.current;
-    const voice = settings.kokoroVoice;
-    const current = kokoroAudio(segments[index]!.text, voice);
+    const { segments, settings, voiceFor } = latest.current;
+    const voiceOf = (segment: SpeechSegment) => voiceFor?.(segment) ?? settings.kokoroVoice;
+    const current = kokoroAudio(segments[index]!.text, voiceOf(segments[index]!));
     // Requested after the current segment, so the server's queue works on what is needed first.
     for (let ahead = index + 1; ahead <= index + KOKORO_PREFETCH && ahead < segments.length; ahead++) {
-      kokoroAudio(segments[ahead]!.text, voice).catch(() => undefined);
+      kokoroAudio(segments[ahead]!.text, voiceOf(segments[ahead]!)).catch(() => undefined);
     }
 
     setBuffering(true);
@@ -185,7 +190,7 @@ export function useReader(segments: SpeechSegment[], onFinished?: () => void): R
     if (status === 'playing') speakFrom(position);
     // Resuming must not carry on with audio in the old voice.
     else loadedRef.current = null;
-  }, [settings.engine, settings.voiceURI, settings.kokoroVoice]);
+  }, [settings.engine, settings.voiceURI, settings.kokoroVoice, settings.characterVoices]);
 
   // Kokoro applies speed and volume to the audio already playing; browser speech has to restart.
   useEffect(() => {

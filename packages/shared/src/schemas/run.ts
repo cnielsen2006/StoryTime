@@ -15,6 +15,10 @@ export const RunCreate = z
     effort: Effort.optional(),
     targetLengthWords: z.number().int().min(100).max(500_000).nullable().optional(),
     chapterCountHint: z.number().int().min(1).max(200).nullable().optional(),
+    /** Assign dialogue voices to what a generate or update run writes. Defaults to on. */
+    attributeDialogue: z.boolean().optional(),
+    /** For kind=attribute: redo text that already has voices, including ones the author corrected. */
+    reattribute: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.kind === 'update') {
@@ -32,6 +36,13 @@ export const RunCreate = z
           path: ['instructions'],
         });
       }
+    }
+    if (value.kind === 'chat') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Revision chats start from the chat endpoint, not from a run.',
+        path: ['kind'],
+      });
     }
     if (value.kind === 'outline' && value.mode === 'draft') {
       ctx.addIssue({

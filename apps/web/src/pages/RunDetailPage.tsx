@@ -86,7 +86,19 @@ export function RunDetailPage() {
         </div>
       ) : null}
 
-      {!stream.outline && stream.targets.length === 0 && running ? (
+      {stream.reply || stream.revisions.length > 0 ? (
+        <div className="card space-y-2 p-4">
+          <h3 className="text-xs font-semibold tracking-wide text-ink-500 uppercase">The reply</h3>
+          {stream.reply ? <p className="text-sm whitespace-pre-wrap text-ink-800">{stream.reply}</p> : null}
+          {stream.revisions.map((revision) => (
+            <p key={revision.versionId} className="text-xs text-ink-500">
+              Rewrote {revision.label} ({revision.wordCount.toLocaleString()} words)
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {!stream.outline && stream.targets.length === 0 && !stream.reply && running ? (
         <div className="card p-6">
           <Spinner label={stream.status ?? 'Assembling the story bible'} />
         </div>
@@ -126,6 +138,8 @@ export function RunDetailPage() {
 function describeRun(mode: string, kind: string): string {
   if (kind === 'outline') return mode === 'scenes' ? 'Planning chapters and scenes' : 'Planning the chapter outline';
   if (kind === 'update') return 'Revising with instructions';
+  if (kind === 'attribute') return 'Working out who speaks each line';
+  if (kind === 'chat') return 'Revising in conversation';
   if (mode === 'draft') return 'Writing the whole draft';
   if (mode === 'scenes') return 'Writing scenes';
   return 'Writing chapters';

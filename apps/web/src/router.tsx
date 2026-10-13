@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { ProjectLayout } from './pages/ProjectLayout.js';
 import { ProjectsPage } from './pages/ProjectsPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { BackupsPage } from './pages/BackupsPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { InboxPage } from './pages/InboxPage.js';
 import { CharactersPage } from './pages/CharactersPage.js';
@@ -17,6 +18,7 @@ import { ExportPage } from './pages/ExportPage.js';
 export const router = createBrowserRouter([
   { path: '/', element: <ProjectsPage /> },
   { path: '/settings', element: <SettingsPage /> },
+  { path: '/backups', element: <BackupsPage /> },
   {
     path: '/p/:projectId',
     element: <ProjectLayout />,

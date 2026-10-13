@@ -10,7 +10,10 @@ import {
   useSaveCharacter,
   useSaveRelationship,
 } from '../api/hooks.js';
+import { useSuggestVoices } from '../api/voiceHooks.js';
 import { HistoryDrawer, LinkedIdeas } from '../components/HistoryDrawer.js';
+import { VoicePicker } from '../components/VoicePicker.js';
+import { getReadingSettings } from '../reading/settings.js';
 import { EmptyState, ErrorNote, Modal, Select, Spinner, TextArea, TextInput } from '../components/ui.js';
 
 /**
@@ -33,6 +36,7 @@ export function CharactersPage() {
   const { data: characters, isLoading } = useCharacters(projectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const suggestVoices = useSuggestVoices(projectId);
 
   const selected = characters?.find((c) => c.id === selectedId) ?? null;
 
@@ -49,10 +53,24 @@ export function CharactersPage() {
             Descriptions and the experiences that shaped them. All of it goes into every prompt.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setCreating(true)}>
-          New character
-        </button>
+        <div className="flex gap-2">
+          {characters && characters.some((c) => !c.voice) ? (
+            <button
+              className="btn-secondary"
+              disabled={suggestVoices.isPending}
+              title="Give every character without a reading voice a different one. You can change any of them."
+              onClick={() => suggestVoices.mutate({ narratorVoice: getReadingSettings().kokoroVoice })}
+            >
+              {suggestVoices.isPending ? 'Choosing…' : 'Suggest voices'}
+            </button>
+          ) : null}
+          <button className="btn-primary" onClick={() => setCreating(true)}>
+            New character
+          </button>
+        </div>
       </div>
+
+      <ErrorNote error={suggestVoices.error} />
 
       {isLoading ? <Spinner /> : null}
 
@@ -167,6 +185,7 @@ function CharacterEditor({ projectId, character }: { projectId: string; characte
       personality: draft.personality ?? null,
       backstory: draft.backstory ?? null,
       arcNotes: draft.arcNotes ?? null,
+      voice: draft.voice ?? null,
       experiences: draft.experiences as CharacterExperienceInput[],
     });
   };
@@ -204,6 +223,7 @@ function CharacterEditor({ projectId, character }: { projectId: string; characte
             <TextInput label="Name" value={draft.name ?? ''} onChange={(name) => set({ name })} />
             <Select label="Role" value={draft.role ?? 'supporting'} onChange={(role) => set({ role: role as never })} options={ROLE_OPTIONS} />
           </div>
+          <VoicePicker value={draft.voice ?? null} onChange={(voice) => set({ voice })} name={draft.name || character.name} />
           <TextArea label="Description" value={draft.description ?? ''} onChange={(v) => set({ description: v })} rows={3} />
           <TextArea label="Appearance" value={draft.appearance ?? ''} onChange={(v) => set({ appearance: v })} rows={2} />
           <TextArea label="Personality" value={draft.personality ?? ''} onChange={(v) => set({ personality: v })} rows={3} />

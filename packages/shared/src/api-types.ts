@@ -6,6 +6,7 @@ import { Location } from './schemas/location.js';
 import { OutlineResult } from './schemas/llm.js';
 import { PlotLineWithPoints } from './schemas/plot.js';
 import { Project, StoryParameters } from './schemas/project.js';
+import type { AppliedRevision } from './schemas/chat.js';
 
 /** Everything the UI needs to render a project at a glance. */
 export const ProjectGraph = z.object({
@@ -41,6 +42,8 @@ export type RunEvent =
   | { seq: number; type: 'text'; targetId: string; delta: string }
   | { seq: number; type: 'target_done'; targetType: VersionTargetType; targetId: string; versionId: string; wordCount: number }
   | { seq: number; type: 'outline'; outline: OutlineResult }
+  | { seq: number; type: 'reply'; delta: string }
+  | { seq: number; type: 'revised'; revision: AppliedRevision }
   | { seq: number; type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens: number }
   | { seq: number; type: 'done'; status: 'succeeded' | 'cancelled'; stopReason: StopReason | null }
   | { seq: number; type: 'error'; message: string; retryable: boolean };

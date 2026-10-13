@@ -4,16 +4,9 @@ import type { Chapter, GenerationMode, Scene, StoryParameters } from '@storytime
  * The system prompt is identical for every request in a run so the provider can
  * cache it. Anything that varies per chapter belongs in the task message.
  */
-export function buildSystemPrompt(bibleMarkdown: string, params: StoryParameters): string {
-  const rules: string[] = [
-    'You are a novelist drafting a book from the story bible below. Write finished prose, not notes, outlines, or commentary.',
-    '',
-    'Rules:',
-    '- The story bible is the source of truth. Do not rename characters or places, and do not contradict established facts.',
-    '- You may invent small concrete details (a gesture, a smell, a passing remark) where the bible is silent. Do not invent new named characters or locations.',
-    '- Write scenes, not summaries. Prefer action and dialogue over narrated recap.',
-  ];
-
+/** The rules that come from the story parameters, shared by every prompt that writes prose. */
+function parameterRules(params: StoryParameters): string[] {
+  const rules: string[] = [];
   if (params.pov?.trim()) rules.push(`- Point of view: ${params.pov.trim()}. Hold it consistently.`);
   if (params.tense?.trim()) rules.push(`- Tense: ${params.tense.trim()}. Hold it consistently.`);
   if (params.audience?.trim()) rules.push(`- Intended audience: ${params.audience.trim()}. Match vocabulary and subject matter to it.`);
@@ -22,6 +15,19 @@ export function buildSystemPrompt(bibleMarkdown: string, params: StoryParameters
   if (params.contentGuidelines?.trim()) {
     rules.push(`- Content guidelines, which override everything above: ${params.contentGuidelines.trim()}`);
   }
+  return rules;
+}
+
+export function buildSystemPrompt(bibleMarkdown: string, params: StoryParameters): string {
+  const rules: string[] = [
+    'You are a novelist drafting a book from the story bible below. Write finished prose, not notes, outlines, or commentary.',
+    '',
+    'Rules:',
+    '- The story bible is the source of truth. Do not rename characters or places, and do not contradict established facts.',
+    '- You may invent small concrete details (a gesture, a smell, a passing remark) where the bible is silent. Do not invent new named characters or locations.',
+    '- Write scenes, not summaries. Prefer action and dialogue over narrated recap.',
+    ...parameterRules(params),
+  ];
 
   rules.push(
     '- Output only the prose itself. No preamble, no "Here is", no notes about what you did, no word count.',
@@ -261,4 +267,48 @@ export function buildTriagePrompt(ideaText: string): string {
     ideaText.trim(),
     '</idea>',
   ].join('\n');
+}
+
+/** Identifies the revision-chat system prompt, so tests and the mock provider can recognise it. */
+export const CHAT_MARKER = 'revision partner';
+
+/**
+ * System prompt for the revision conversation. Like the drafting prompt it is
+ * stable for the whole conversation so a provider can cache it; the manuscript
+ * text, which changes after every revision, travels in the latest message.
+ */
+export function buildChatSystemPrompt(bibleMarkdown: string, params: StoryParameters): string {
+  const rules = [
+    `You are the author's ${CHAT_MARKER}. They are improving their manuscript in conversation with you, using the story bible below as the source of truth.`,
+    '',
+    'How to work:',
+    '- Talk to them plainly and briefly. Answer questions, give an honest opinion, and offer options when they ask what to do.',
+    '- When they ask for a change, or agree to one you suggested, make it. Output the COMPLETE revised text of every section you change inside <revised_section id="ID">...</revised_section> tags, using the id of the manuscript section it replaces. Put your conversational reply, a sentence or two on what you changed, before the tags.',
+    '- Never output a partial section, a diff, or a placeholder such as "rest unchanged". Sections you do not change are not output at all.',
+    '- A revision is not a fresh draft. Keep everything the author did not ask to change as close to the original as you can: the same events, voice, and sentences wherever they still work.',
+    '- If they only ask a question, or the request is ambiguous, do not change any text. Answer, or ask one short question.',
+    '- If a requested change contradicts the story bible and they clearly want it, make it, then say the bible needs updating to match.',
+    '- Inside a revised section write prose only. No commentary, and no heading the section did not already have.',
+    '- Never name new characters or places the bible does not contain unless the author asks for them.',
+    ...parameterRules(params),
+    '',
+    'The bracketed tags after names, like [C:ab12], are internal ids. Never write them in the manuscript or in your reply.',
+  ];
+  return `${rules.join('\n')}\n\n${bibleMarkdown}`;
+}
+
+export interface ChatSectionInput {
+  id: string;
+  title: string;
+  text: string;
+}
+
+/** The latest author message together with the manuscript as it stands right now. */
+export function buildChatUserMessage(sections: ChatSectionInput[], message: string): string {
+  const lines = ['<manuscript>'];
+  for (const section of sections) {
+    lines.push(`<manuscript_section id="${section.id}" title="${section.title.replace(/"/g, "'")}">`, section.text.trim(), '</manuscript_section>');
+  }
+  lines.push('</manuscript>', '', '<author_message>', message.trim(), '</author_message>');
+  return lines.join('\n');
 }

@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import type { ModelInfo } from '@storytime/shared';
+import { CHAT_MARKER } from '../../bible/prompts.js';
 import { estimateRequestTokens, estimateTokens } from '../tokens.js';
 import {
   ProviderError,
@@ -47,8 +48,33 @@ function targetWordsFrom(text: string): number {
   return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 40), 4000) : 220;
 }
 
+/**
+ * A revision-chat reply. Asking for a change (revise, shorten, tighten, rewrite,
+ * cut, ...) rewrites the first manuscript section; anything else is just talk.
+ */
+function buildChatText(req: TextRequest): string {
+  const task = req.messages.at(-1)?.content ?? '';
+  const message = /<author_message>([\s\S]*?)<\/author_message>/.exec(task)?.[1]?.trim() ?? '';
+  const sectionIds = [...task.matchAll(/<manuscript_section id="([^"]+)"/g)].map((m) => m[1]!);
+  const wantsChange = /\b(revise|rewrite|shorten|tighten|change|cut|trim|fix)\b/i.test(message);
+
+  if (!wantsChange || sectionIds.length === 0) {
+    return `[MOCK] On "${message.slice(0, 60)}": I would keep it as it is. Tell me what to change and I will revise it.`;
+  }
+  return [
+    `[MOCK] Done. I revised the section the way you asked.`,
+    '',
+    `<revised_section id="${sectionIds[0]}">`,
+    `[MOCK REVISED] ${message}`,
+    '',
+    LOREM[0],
+    '</revised_section>',
+  ].join('\n');
+}
+
 /** Deterministic pseudo-prose sized to the requested word count. */
 function buildText(req: TextRequest): string {
+  if (req.system.includes(CHAT_MARKER)) return buildChatText(req);
   const task = req.messages.at(-1)?.content ?? '';
   const names = extractHeadings(req.system).slice(0, 4);
   const targetWords = targetWordsFrom(task);
@@ -178,6 +204,21 @@ export class MockProvider implements LlmProvider {
               : [],
           };
         }),
+      };
+    }
+
+    if (req.schemaName === 'dialogue_attribution') {
+      // Alternates the first two cast members across the numbered quotes, and
+      // makes the first one the narrator when the story is first person.
+      const text = req.messages.at(-1)?.content ?? '';
+      const numbers = [...text.matchAll(/⟦(\d+)⟧/g)].map((m) => Number(m[1]));
+      const speakers = characterIds.slice(0, 2);
+      return {
+        narratorId: /Story point of view: [^\n]*first/i.test(req.system) ? (characterIds[0] ?? '') : '',
+        speakers: numbers.map((quote, index) => ({
+          quote,
+          characterId: speakers.length ? speakers[index % speakers.length]! : '',
+        })),
       };
     }
 

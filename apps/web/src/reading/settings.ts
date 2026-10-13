@@ -23,6 +23,8 @@ export interface ReadingSettings {
   autoScroll: boolean;
   /** Move on to the next chapter when one finishes. */
   continueToNext: boolean;
+  /** Read each character's lines in the voice given to them, and narration in the narrator's. Kokoro only. */
+  characterVoices: boolean;
 }
 
 export const DEFAULT_READING_SETTINGS: ReadingSettings = {
@@ -35,6 +37,7 @@ export const DEFAULT_READING_SETTINGS: ReadingSettings = {
   highlight: true,
   autoScroll: true,
   continueToNext: true,
+  characterVoices: true,
 };
 
 export const SPEED_OPTIONS = [0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];

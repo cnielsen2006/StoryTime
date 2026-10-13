@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import type { Chapter, GeneratedVersion } from '@storytime/shared';
+import type { Chapter, ChatScope, GeneratedVersion } from '@storytime/shared';
 import {
   useChapters,
   useMakeVersionCurrent,
@@ -16,6 +16,7 @@ import {
 } from '../api/hooks.js';
 import { EmptyState, ErrorNote, Modal, Spinner, StaleBadge, TextArea, formatWhen } from '../components/ui.js';
 import { ReadableText } from '../components/ReadableText.js';
+import { RevisionChatPanel } from '../components/RevisionChatPanel.js';
 import { getReadingSettings } from '../reading/settings.js';
 
 export function ManuscriptPage() {
@@ -26,6 +27,17 @@ export function ManuscriptPage() {
   // Set when reading carried on from the previous chapter, so this one starts on its own.
   const [listenOnOpenId, setListenOnOpenId] = useState<string | null>(null);
   const splitDraft = useSplitDraft(projectId);
+  const [chat, setChat] = useState<{ scope: ChatScope; title: string } | null>(null);
+  const openChat = (scope: ChatScope, title: string) => setChat({ scope, title });
+  const panel = chat ? (
+    <RevisionChatPanel
+      key={`${chat.scope.scopeType}:${chat.scope.scopeId}`}
+      projectId={projectId}
+      scope={chat.scope}
+      title={chat.title}
+      onClose={() => setChat(null)}
+    />
+  ) : null;
 
   useEffect(() => {
     if (!selectedId && chapters?.length) setSelectedId(chapters[0]!.id);
@@ -55,12 +67,21 @@ export function ManuscriptPage() {
               Written in one pass. Split it into chapters to edit and regenerate them separately.
             </p>
           </div>
-          <button className="btn-primary" onClick={() => splitDraft.mutate()} disabled={splitDraft.isPending}>
-            {splitDraft.isPending ? 'Splitting…' : 'Split into chapters'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              className="btn-secondary"
+              onClick={() => openChat({ scopeType: 'draft', scopeId: projectId }, manuscript.title)}
+            >
+              Revise with AI
+            </button>
+            <button className="btn-primary" onClick={() => splitDraft.mutate()} disabled={splitDraft.isPending}>
+              {splitDraft.isPending ? 'Splitting…' : 'Split into chapters'}
+            </button>
+          </div>
         </div>
         <ErrorNote error={splitDraft.error} />
         <ReadableText text={manuscript.draft} className="card prose-manuscript max-w-none p-8 text-ink-800" />
+        {panel}
       </div>
     );
   }
@@ -79,50 +100,92 @@ export function ManuscriptPage() {
     );
   }
 
+  const switchChapter = (id: string) => {
+    setSelectedId(id);
+    setListenOnOpenId(null);
+    // A conversation about one chapter follows the reader to the next.
+    if (chat?.scope.scopeType === 'chapter') {
+      const next = chapters?.find((c) => c.id === id);
+      if (next) openChat({ scopeType: 'chapter', scopeId: id }, next.title);
+    }
+  };
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
-      <ul className="space-y-1">
-        {chapters?.map((chapter, index) => (
-          <li key={chapter.id}>
-            <button
-              onClick={() => {
-                setSelectedId(chapter.id);
-                setListenOnOpenId(null);
-              }}
-              className={`w-full rounded-md px-3 py-2 text-left ${
-                selectedId === chapter.id ? 'bg-ink-800 text-white' : 'text-ink-700 hover:bg-ink-100'
-              }`}
-            >
-              <div className="flex items-baseline gap-2">
-                <span className={`text-xs ${selectedId === chapter.id ? 'text-white/50' : 'text-ink-400'}`}>
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{chapter.title}</span>
-              </div>
-              <div
-                className={`mt-0.5 flex items-center gap-2 text-xs ${
-                  selectedId === chapter.id ? 'text-white/60' : 'text-ink-400'
+    <div
+      className={`grid gap-6 ${chat ? 'lg:grid-cols-1 lg:pr-[var(--chat-pad)]' : 'lg:grid-cols-[16rem_1fr]'}`}
+      // Leaves room beside the chat panel on screens where the page would otherwise run underneath it.
+      style={{ '--chat-pad': 'max(0px, calc(29rem - (100vw - 72rem) / 2 - 1.5rem))' } as CSSProperties}
+    >
+      <div className={`space-y-3 ${chat ? 'lg:hidden' : ''}`}>
+        <button
+          className="btn-secondary w-full text-xs"
+          onClick={() => openChat({ scopeType: 'book', scopeId: projectId }, 'The whole book')}
+          title="Talk through changes to the whole manuscript, and have them made chapter by chapter"
+        >
+          Revise the book with AI
+        </button>
+        <ul className="space-y-1">
+          {chapters?.map((chapter, index) => (
+            <li key={chapter.id}>
+              <button
+                onClick={() => switchChapter(chapter.id)}
+                className={`w-full rounded-md px-3 py-2 text-left ${
+                  selectedId === chapter.id ? 'bg-ink-800 text-white' : 'text-ink-700 hover:bg-ink-100'
                 }`}
               >
-                {chapter.currentVersionId ? `${chapter.wordCount.toLocaleString()}w` : 'unwritten'}
-                {chapter.staleLevel !== 'none' ? (
-                  <span className={chapter.staleLevel === 'hard' ? 'text-red-400' : 'text-amber-400'}>●</span>
-                ) : null}
-              </div>
-            </button>
-          </li>
-        ))}
-      </ul>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-xs ${selectedId === chapter.id ? 'text-white/50' : 'text-ink-400'}`}>
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{chapter.title}</span>
+                </div>
+                <div
+                  className={`mt-0.5 flex items-center gap-2 text-xs ${
+                    selectedId === chapter.id ? 'text-white/60' : 'text-ink-400'
+                  }`}
+                >
+                  {chapter.currentVersionId ? `${chapter.wordCount.toLocaleString()}w` : 'unwritten'}
+                  {chapter.staleLevel !== 'none' ? (
+                    <span className={chapter.staleLevel === 'hard' ? 'text-red-400' : 'text-amber-400'}>●</span>
+                  ) : null}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      {selected ? (
-        <ChapterView
-          key={selected.id}
-          projectId={projectId}
-          chapter={selected}
-          listenOnOpen={listenOnOpenId === selected.id}
-          onListenFinished={continueReading}
-        />
-      ) : null}
+      <div className="min-w-0 space-y-4">
+        {/* With the chat open the chapter list steps aside, so chapters are chosen here instead. */}
+        {chat ? (
+          <label className="hidden items-center gap-2 text-xs text-ink-500 lg:flex">
+            Chapter
+            <select
+              className="rounded border border-ink-200 px-2 py-1 text-sm text-ink-800"
+              value={selectedId ?? ''}
+              onChange={(e) => switchChapter(e.target.value)}
+            >
+              {chapters?.map((chapter, index) => (
+                <option key={chapter.id} value={chapter.id}>
+                  {index + 1}. {chapter.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {selected ? (
+          <ChapterView
+            key={selected.id}
+            projectId={projectId}
+            chapter={selected}
+            listenOnOpen={listenOnOpenId === selected.id}
+            onListenFinished={continueReading}
+            onChat={() => openChat({ scopeType: 'chapter', scopeId: selected.id }, selected.title)}
+          />
+        ) : null}
+      </div>
+      {panel}
     </div>
   );
 }
@@ -132,11 +195,13 @@ function ChapterView({
   chapter,
   listenOnOpen,
   onListenFinished,
+  onChat,
 }: {
   projectId: string;
   chapter: Chapter;
   listenOnOpen: boolean;
   onListenFinished: () => void;
+  onChat: () => void;
 }) {
   const navigate = useNavigate();
   const { data: graph } = useProjectGraph(projectId);
@@ -178,6 +243,11 @@ function ChapterView({
           <button className="btn-secondary text-xs" onClick={regenerate} disabled={startRun.isPending}>
             {chapter.currentVersionId ? 'Rewrite' : 'Write it'}
           </button>
+          {chapter.currentVersionId || hasScenes ? (
+            <button className="btn-secondary text-xs" onClick={onChat}>
+              Revise with AI
+            </button>
+          ) : null}
           {chapter.currentVersionId ? (
             <>
               <button className="btn-secondary text-xs" onClick={() => setUpdating(true)}>
@@ -223,7 +293,7 @@ function ChapterView({
       ) : null}
 
       {hasScenes ? (
-        <SceneList projectId={projectId} scenes={scenes ?? []} graph={graph} />
+        <SceneList projectId={projectId} chapterId={chapter.id} scenes={scenes ?? []} graph={graph} />
       ) : null}
 
       {versions && versions.length > 1 ? (
@@ -253,6 +323,8 @@ function ChapterView({
       {active ? (
         <ReadableText
           text={active.content}
+          versionId={active.id}
+          chapterId={chapter.id}
           className="card prose-manuscript max-w-none p-8 text-ink-800"
           autoStart={listenOnOpen && active.isCurrent}
           onFinished={active.isCurrent ? onListenFinished : undefined}
@@ -291,10 +363,12 @@ function ChapterView({
 
 function SceneList({
   projectId,
+  chapterId,
   scenes,
   graph,
 }: {
   projectId: string;
+  chapterId: string;
   scenes: Array<{ id: string; title: string; goal: string | null; currentVersionId: string | null; wordCount: number; staleLevel: string; povCharacterId: string | null; locationId: string | null }>;
   graph: { characters: Array<{ id: string; name: string }>; locations: Array<{ id: string; name: string }> } | undefined;
 }) {
@@ -325,9 +399,14 @@ function SceneList({
           </button>
           {scene.goal ? <p className="mt-1 pl-6 text-xs text-ink-500">{scene.goal}</p> : null}
           {openId === scene.id && current ? (
-            <article className="prose-manuscript mt-3 max-w-none border-t border-ink-200 pt-3 whitespace-pre-wrap text-sm text-ink-800">
-              {current.content}
-            </article>
+            <div className="mt-3 border-t border-ink-200 pt-3">
+              <ReadableText
+                text={current.content}
+                versionId={current.id}
+                chapterId={chapterId}
+                className="prose-manuscript max-w-none text-sm text-ink-800"
+              />
+            </div>
           ) : null}
         </div>
       ))}

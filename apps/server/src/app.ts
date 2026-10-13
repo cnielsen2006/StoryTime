@@ -2,6 +2,8 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { ZodError } from 'zod';
 import { config } from './config.js';
 import { createDb, getDb, type Db, type Sqlite } from './db/client.js';
@@ -14,13 +16,23 @@ declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     sqlite: Sqlite;
+    /** Where backup files are kept. */
+    backupDir: string;
   }
 }
 
 export interface BuildAppOptions {
   dbPath?: string;
+  /** Overrides the backups folder, which otherwise sits beside the database. */
+  backupDir?: string;
   logger?: boolean;
   serveStatic?: boolean;
+}
+
+/** Backups live in a folder next to the database. An in-memory database has no folder, so it gets a temp one. */
+function defaultBackupDir(dbPath: string): string {
+  const base = dbPath === ':memory:' ? path.join(os.tmpdir(), 'storytime-memory') : path.dirname(dbPath);
+  return path.join(base, 'backups');
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -33,6 +45,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   runMigrations(db);
   app.decorate('db', db);
   app.decorate('sqlite', sqlite);
+  app.decorate('backupDir', options.backupDir ?? defaultBackupDir(options.dbPath ?? config.dbPath));
 
   // A run that was in flight when the process died can never resume.
   resetOrphanedRuns(db);

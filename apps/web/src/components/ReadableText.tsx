@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router';
+import { useProjectGraph } from '../api/hooks.js';
+import { useAssignVoices, useDialogue } from '../api/voiceHooks.js';
+import { DialogueModal } from './DialogueModal.js';
+import { ErrorNote, useLocalStorage } from './ui.js';
 import {
   SPEED_OPTIONS,
   formatSpeed,
@@ -11,6 +15,7 @@ import {
 import { kokoroVoiceLabel, sortKokoroVoices, useKokoro } from '../reading/kokoro.js';
 import { buildSegments, splitParagraphs } from '../reading/text.js';
 import { useReader, type Reader } from '../reading/useReader.js';
+import { voiceForSegment, type VoiceCast } from '../reading/voices.js';
 
 /**
  * Manuscript text with a read-aloud bar above it. While reading, the current
@@ -21,17 +26,43 @@ export function ReadableText({
   className = '',
   autoStart = false,
   onFinished,
+  versionId,
+  chapterId,
 }: {
   text: string;
   className?: string;
   /** Start reading as soon as the text appears, used when moving on to the next chapter. */
   autoStart?: boolean;
   onFinished?: () => void;
+  /** The version being shown. With it, characters' lines can be read in their own voices. */
+  versionId?: string;
+  /** The chapter this text belongs to, so voices can be assigned to it. */
+  chapterId?: string;
 }) {
+  const { projectId = '' } = useParams();
   const [settings] = useReadingSettings();
+  const wantVoices = settings.engine === 'kokoro' && settings.characterVoices && Boolean(versionId) && Boolean(projectId);
+  const { data: graph } = useProjectGraph(projectId, { enabled: wantVoices });
+  const { data: kokoroInfo } = useKokoro(wantVoices);
+  const dialogue = useDialogue(versionId, wantVoices);
+  const attribution = wantVoices ? (dialogue.data ?? null) : null;
+  const characters = graph?.characters ?? [];
+
   const paragraphs = useMemo(() => splitParagraphs(text), [text]);
-  const segments = useMemo(() => buildSegments(paragraphs), [paragraphs]);
-  const reader = useReader(segments, onFinished);
+  const segments = useMemo(() => buildSegments(paragraphs, attribution?.quotes), [paragraphs, attribution]);
+
+  const cast = useMemo<VoiceCast>(
+    () => ({
+      fallback: settings.kokoroVoice,
+      narratorId: attribution?.narratorId ?? null,
+      voices: new Map(characters.flatMap((c) => (c.voice ? [[c.id, c.voice] as const] : []))),
+      available: kokoroInfo?.voices.length ? new Set(kokoroInfo.voices.map((v) => v.id)) : null,
+    }),
+    [settings.kokoroVoice, attribution, characters, kokoroInfo],
+  );
+  const voiceFor = useCallback((segment: Parameters<typeof voiceForSegment>[0]) => voiceForSegment(segment, cast), [cast]);
+  const reader = useReader(segments, onFinished, attribution ? voiceFor : undefined);
+  const [reviewing, setReviewing] = useState(false);
   const paragraphRefs = useRef<Array<HTMLParagraphElement | null>>([]);
   const reading = reader.status !== 'idle';
 
@@ -53,7 +84,16 @@ export function ReadableText({
 
   return (
     <div className="space-y-2">
-      {reader.supported && segments.length > 0 ? <ReaderBar reader={reader} total={paragraphs.length} /> : null}
+      {wantVoices && dialogue.isSuccess && !attribution ? (
+        <VoiceHint projectId={projectId} chapterId={chapterId} characters={characters} />
+      ) : null}
+      {reader.supported && segments.length > 0 ? (
+        <ReaderBar
+          reader={reader}
+          total={paragraphs.length}
+          onReviewVoices={attribution && versionId ? () => setReviewing(true) : undefined}
+        />
+      ) : null}
       {reader.error ? <p className="text-xs text-red-600">{reader.error}</p> : null}
       <article className={className}>
         {paragraphs.map((paragraph, index) => (
@@ -75,11 +115,80 @@ export function ReadableText({
           </p>
         ))}
       </article>
+
+      {attribution && versionId ? (
+        <DialogueModal
+          open={reviewing}
+          onClose={() => setReviewing(false)}
+          projectId={projectId}
+          chapterId={chapterId}
+          versionId={versionId}
+          text={text}
+          attribution={attribution}
+          characters={characters}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ReaderBar({ reader, total }: { reader: Reader; total: number }) {
+/**
+ * Shown above text that has not had its dialogue assigned to characters. It
+ * stays out of the way for authors who do not use character voices.
+ */
+function VoiceHint({
+  projectId,
+  chapterId,
+  characters,
+}: {
+  projectId: string;
+  chapterId?: string;
+  characters: Array<{ voice: string | null }>;
+}) {
+  const [hidden, setHidden] = useLocalStorage('storytime.hideVoiceHint', false);
+  const assign = useAssignVoices(projectId);
+  if (hidden || characters.length === 0) return null;
+
+  const cast = characters.some((c) => c.voice);
+  return (
+    <div className="space-y-2 rounded-md border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1">
+          {cast
+            ? 'This is read in one voice. Work out who speaks each line to give characters their own.'
+            : 'Give your characters voices and they can read their own lines.'}
+        </span>
+        {cast ? (
+          <button
+            className="btn-secondary shrink-0 text-xs"
+            disabled={assign.isPending}
+            onClick={() => assign.mutate({ chapterIds: chapterId ? [chapterId] : undefined })}
+          >
+            {assign.isPending ? 'Assigning…' : 'Assign voices'}
+          </button>
+        ) : (
+          <Link to={`/p/${projectId}/characters`} className="btn-secondary shrink-0 text-xs">
+            Choose voices
+          </Link>
+        )}
+        <button className="btn-ghost shrink-0 text-xs" onClick={() => setHidden(true)}>
+          Hide
+        </button>
+      </div>
+      <ErrorNote error={assign.error} />
+    </div>
+  );
+}
+
+function ReaderBar({
+  reader,
+  total,
+  onReviewVoices,
+}: {
+  reader: Reader;
+  total: number;
+  onReviewVoices?: () => void;
+}) {
   const [settings, update] = useReadingSettings();
   const kokoro = settings.engine === 'kokoro';
   const voices = useVoices();
@@ -168,6 +277,11 @@ function ReaderBar({ reader, total }: { reader: Reader; total: number }) {
             ))}
           </select>
         )}
+        {onReviewVoices ? (
+          <button className="btn-ghost px-2 text-xs" onClick={onReviewVoices} title="Check who speaks each line">
+            Voices
+          </button>
+        ) : null}
         <Link to="/settings#reading" className="btn-ghost px-2 text-xs" title="More reading settings" aria-label="More reading settings">
           ⚙
         </Link>

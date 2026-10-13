@@ -32,6 +32,9 @@ export function ProjectsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link to="/backups" className="btn-secondary">
+            Backups
+          </Link>
           <Link to="/settings" className="btn-secondary">
             Settings
           </Link>

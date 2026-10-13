@@ -234,6 +234,11 @@ export function ReadingVoiceSection() {
             <Toggle checked={settings.continueToNext} onChange={(continueToNext) => update({ continueToNext })}>
               Carry on to the next chapter when one finishes
             </Toggle>
+            {settings.engine === 'kokoro' ? (
+              <Toggle checked={settings.characterVoices} onChange={(characterVoices) => update({ characterVoices })}>
+                Read characters&apos; lines in their own voices (the voice above narrates)
+              </Toggle>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">

@@ -31,6 +31,8 @@ export const CharacterCreate = z.object({
   personality: OptionalText,
   backstory: OptionalText,
   arcNotes: OptionalText,
+  /** Kokoro voice used when the reader performs this character's lines. Not part of the story bible. */
+  voice: z.string().trim().max(64).nullable().optional(),
   experiences: z.array(CharacterExperienceInput).max(200).optional(),
 });
 export type CharacterCreate = z.infer<typeof CharacterCreate>;
@@ -48,6 +50,7 @@ export const Character = z.object({
   personality: z.string().nullable(),
   backstory: z.string().nullable(),
   arcNotes: z.string().nullable(),
+  voice: z.string().nullable(),
   sortOrder: z.number().int(),
   revision: z.number().int(),
   createdAt: z.number().int(),

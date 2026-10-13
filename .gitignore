@@ -10,3 +10,4 @@ data/*.db-shm
 Temp
 *.tsbuildinfo
 data/models/
+data/backups/

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { OutlineResult, RunEvent, StopReason, VersionTargetType } from '@storytime/shared';
+import type { AppliedRevision, OutlineResult, RunEvent, StopReason, VersionTargetType } from '@storytime/shared';
 
 export interface TargetProgress {
   targetType: VersionTargetType;
@@ -15,6 +15,10 @@ export interface RunStreamState {
   status: string | null;
   targets: TargetProgress[];
   outline: OutlineResult | null;
+  /** A revision chat's reply so far: the conversation, without the text it rewrote. */
+  reply: string;
+  /** Versions a revision chat wrote during this run. */
+  revisions: AppliedRevision[];
   usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number } | null;
   finished: boolean;
   outcome: 'succeeded' | 'cancelled' | null;
@@ -27,6 +31,8 @@ const initialState: RunStreamState = {
   status: null,
   targets: [],
   outline: null,
+  reply: '',
+  revisions: [],
   usage: null,
   finished: false,
   outcome: null,
@@ -108,6 +114,12 @@ export function useRunStream(runId: string | undefined): RunStreamState {
           case 'outline':
             return { ...prev, outline: parsed.outline };
 
+          case 'reply':
+            return { ...prev, reply: prev.reply + parsed.delta };
+
+          case 'revised':
+            return { ...prev, revisions: [...prev.revisions, parsed.revision] };
+
           case 'usage':
             return {
               ...prev,
@@ -136,7 +148,7 @@ export function useRunStream(runId: string | undefined): RunStreamState {
     };
 
     // The server names each event, so listen per type plus the default channel.
-    const types = ['status', 'target_started', 'text', 'target_done', 'outline', 'usage', 'done', 'error'];
+    const types = ['status', 'target_started', 'text', 'target_done', 'outline', 'reply', 'revised', 'usage', 'done', 'error'];
     for (const type of types) source.addEventListener(type, handle as EventListener);
     source.onmessage = handle;
 

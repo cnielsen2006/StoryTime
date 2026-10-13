@@ -248,6 +248,24 @@ export function setCurrentVersion(db: Db, targetType: VersionTargetType, targetI
   }
 }
 
+/** Id of the version a target currently shows, or null when nothing has been written for it. */
+export function currentVersionId(db: Db, targetType: VersionTargetType, targetId: string): string | null {
+  if (targetType === 'chapter') {
+    return db.select({ v: chapters.currentVersionId }).from(chapters).where(eq(chapters.id, targetId)).get()?.v ?? null;
+  }
+  if (targetType === 'scene') {
+    return db.select({ v: scenes.currentVersionId }).from(scenes).where(eq(scenes.id, targetId)).get()?.v ?? null;
+  }
+  return (
+    db
+      .select({ id: generatedVersions.id })
+      .from(generatedVersions)
+      .where(and(eq(generatedVersions.targetType, targetType), eq(generatedVersions.targetId, targetId)))
+      .orderBy(desc(generatedVersions.versionNo))
+      .get()?.id ?? null
+  );
+}
+
 /** Text of the current version for a target, or empty string when unwritten. */
 export function currentText(db: Db, targetType: VersionTargetType, targetId: string): string {
   if (targetType === 'chapter') {
