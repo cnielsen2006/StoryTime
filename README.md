@@ -91,6 +91,26 @@ safety backup (the newest 20 safety backups are kept; your own are never
 deleted automatically), and a restore either finishes completely or changes
 nothing.
 
+## Screenshots
+
+Taken from the sample project running on the mock provider, so the prose is placeholder text.
+
+**Give a character a reading voice** and hear it before choosing.
+
+![Character profile with a reading voice picker](docs/screenshots/character-voice.png)
+
+**Check who speaks each line.** The model assigns dialogue to characters; correct anything it got wrong.
+
+![Dialogue review listing each quoted line with its speaker](docs/screenshots/dialogue-voices.png)
+
+**Revise in conversation.** The reply says what changed, and the rewrite can be compared or undone.
+
+![Revision chat beside a chapter, showing a rewrite and its diff](docs/screenshots/revision-chat.png)
+
+**Back up the stories you choose** and keep a history of backups to restore from.
+
+![Backups page with a story ticked and a label entered](docs/screenshots/backups.png)
+
 ## Quick start
 
 Double-click **`start.bat`**. It installs dependencies on first run, creates
